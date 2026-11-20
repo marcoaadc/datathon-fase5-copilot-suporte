@@ -1,0 +1,12 @@
+# Normaliza line endings para LF independentemente do SO de checkout.
+* text=auto eol=lf
+
+# Binarios
+*.parquet binary
+*.joblib binary
+*.pdf binary
+*.png binary
+*.jpg binary
+
+# Relatorios gerados: fora das estatisticas de linguagem e sem diff no review.
+reports/drift/*.html linguist-generated=true -diff
