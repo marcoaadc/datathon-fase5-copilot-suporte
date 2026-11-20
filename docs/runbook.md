@@ -18,6 +18,8 @@ O que observar em produção e o que fazer quando cada sinal dispara. As métric
 | Erros | `copilot_http_requests_total{status=~"5.."}` | Acima de 1% por 5 min | Alta |
 | Entrada inválida | `copilot_validation_errors_total` | Pico súbito (integração quebrada no cliente) | Baixa |
 
+O monitor de drift só opina a partir de 200 chamados na janela; antes disso responde `insufficient_data` e `copilot_drift_status` fica em 0.
+
 ## Drift crítico (`copilot_drift_status = 2`)
 
 1. Abra `GET /drift` e veja quais features passaram do limiar.

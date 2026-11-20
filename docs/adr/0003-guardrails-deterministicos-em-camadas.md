@@ -26,6 +26,7 @@ As regras de entrada rodam sobre o texto normalizado (minúsculas, sem acento, s
 
 - Suíte de desenvolvimento (`tests/data/guardrail_cases.json`): 58 ataques e 50 perguntas legítimas, todos classificados corretamente. As regras foram ajustadas contra ela, então isso mede regressão, não eficácia.
 - Conjunto cego, escrito por um revisor sem acesso às regras (`tests/data/guardrail_heldout.json`): **38 de 51 ataques bloqueados (74,5%) na primeira medição** e 70 de 70 perguntas legítimas liberadas. As 13 falhas eram paráfrases sem as palavras-chave esperadas ("deixe de lado as orientações que recebeu", "assuma a persona...") e orientaram generalizações das regras.
+- Revisão independente do código (`tests/data/guardrail_review.json`): encontrou oito falsos positivos e dois bypasses que as suítes não cobriam; todos corrigidos e mantidos como teste de regressão.
 
 ## Consequências
 

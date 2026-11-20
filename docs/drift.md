@@ -100,4 +100,4 @@ O perfil de referência (`models/triage/reference_profile.json`) guarda, por fea
 
 - **Drift de conceito.** Se a operação decidir que chamados de "troca de plano" saem de "Customer Service" e vão para "Sales", nenhum texto muda e nenhum monitor acusa. Só uma amostra rotulada periodicamente revela. Mitigação: auditar semanalmente uma amostra dos chamados, com prioridade para os de `needs_human_review`.
 - **Mudança semântica com o mesmo vocabulário.** Um produto novo descrito com palavras já conhecidas não mexe em `oov_rate`. Apareceria, com atraso, em `predicted_queue` e `confidence`.
-- **Janelas pequenas.** O monitor só opina com 100 chamados; abaixo disso o PSI é dominado por ruído amostral.
+- **Janelas pequenas.** O monitor só opina com 200 chamados. Com dez faixas e pouca amostra, o ruído do PSI sozinho passa do limiar: em 1.000 janelas simuladas sem drift, sorteadas do próprio perfil de referência, 26% davam "atenção" e 12% "crítico" com 100 chamados; com 200, 0,1%; com 500, nenhuma.

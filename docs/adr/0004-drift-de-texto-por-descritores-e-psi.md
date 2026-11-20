@@ -24,5 +24,5 @@ O modelo de triagem recebe texto livre. Testes de drift comparam distribuições
 
 - O relatório liga causa e efeito: no cenário severo, 9 de 10 colunas em drift e acurácia de 0,63 para 0,47.
 - `digit_ratio` não acusa drift em nenhum cenário, e está certo: nenhum mecanismo mexe em dígitos. Serve de controle negativo dentro do próprio relatório.
-- O monitor da API vive na memória de cada réplica e precisa de 100 chamados para opinar; é um alerta rápido, não substitui o relatório em lote.
+- O monitor da API vive na memória de cada réplica e precisa de 200 chamados para opinar (com menos, o ruído amostral do PSI encosta no limiar); é um alerta rápido, não substitui o relatório em lote.
 - Drift de conceito (o mesmo texto passar a pertencer a outra fila) não é detectável sem rótulo. A mitigação é amostrar chamados para rotulagem humana, descrita no runbook.
