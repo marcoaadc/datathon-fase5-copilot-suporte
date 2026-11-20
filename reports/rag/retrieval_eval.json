@@ -1,0 +1,82 @@
+{
+  "embedding_model": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+  "chunks": 50,
+  "chunk_size": 700,
+  "chunk_overlap": 120,
+  "k": 4,
+  "n_in_scope": 60,
+  "n_out_of_scope": 20,
+  "modes": {
+    "hybrid": {
+      "hit_at_1": 0.8166666666666667,
+      "hit_at_4": 0.9833333333333333,
+      "mrr": 0.8902777777777778
+    },
+    "dense": {
+      "hit_at_1": 0.7833333333333333,
+      "hit_at_4": 0.9666666666666667,
+      "mrr": 0.85
+    },
+    "lexical": {
+      "hit_at_1": 0.6833333333333333,
+      "hit_at_4": 0.8833333333333333,
+      "mrr": 0.7652777777777778
+    }
+  },
+  "similarity": {
+    "in_scope_min": 0.29620444774627686,
+    "in_scope_mean": 0.5980929717421531,
+    "out_of_scope_max": 0.40497493743896484,
+    "out_of_scope_mean": 0.17782359570264816
+  },
+  "min_relevance": 0.35,
+  "threshold_sweep": [
+    {
+      "threshold": 0.2,
+      "in_scope_passed": 1.0,
+      "out_of_scope_refused": 0.55
+    },
+    {
+      "threshold": 0.25,
+      "in_scope_passed": 1.0,
+      "out_of_scope_refused": 0.8
+    },
+    {
+      "threshold": 0.3,
+      "in_scope_passed": 0.9833333333333333,
+      "out_of_scope_refused": 0.85
+    },
+    {
+      "threshold": 0.35,
+      "in_scope_passed": 0.9833333333333333,
+      "out_of_scope_refused": 0.85
+    },
+    {
+      "threshold": 0.4,
+      "in_scope_passed": 0.95,
+      "out_of_scope_refused": 0.95
+    },
+    {
+      "threshold": 0.45,
+      "in_scope_passed": 0.9,
+      "out_of_scope_refused": 1.0
+    },
+    {
+      "threshold": 0.5,
+      "in_scope_passed": 0.8,
+      "out_of_scope_refused": 1.0
+    }
+  ],
+  "misses_hybrid": [
+    {
+      "question": "O que vem na caixa do produto?",
+      "section": "1.1",
+      "retrieved": [
+        "9.1 Garantia",
+        "1 Visão geral do produto",
+        "",
+        "5.5 Acesso remoto"
+      ]
+    }
+  ]
+}

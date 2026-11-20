@@ -75,7 +75,8 @@ class Settings(BaseSettings):
     chunk_overlap: int = Field(120, ge=0)
     retrieval_k: int = Field(4, ge=1, le=10)
     retrieval_candidates: int = Field(12, ge=1, le=50)
-    min_relevance: float = Field(0.30, ge=0, le=1)
+    # Escolhido pela varredura de scripts/evaluate_rag.py (reports/rag/retrieval_eval.md).
+    min_relevance: float = Field(0.35, ge=0, le=1)
     embedding_model: str = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
     embedding_cache_dir: Path = Path(".cache/fastembed")
 
@@ -84,12 +85,14 @@ class Settings(BaseSettings):
     openai_api_key: SecretStr | None = Field(
         default=None, validation_alias=AliasChoices("COPILOT_OPENAI_API_KEY", "OPENAI_API_KEY")
     )
+    # Nomes de modelo mudam e sao descontinuados pelos provedores: sao configuracao, nao codigo.
+    # Confira o que esta disponivel na sua conta com `python -m supportcopilot.pipelines.check_llm`.
     openai_model: str = "gpt-4o-mini"
     openai_base_url: str | None = None
     google_api_key: SecretStr | None = Field(
         default=None, validation_alias=AliasChoices("COPILOT_GOOGLE_API_KEY", "GOOGLE_API_KEY", "GEMINI_API_KEY")
     )
-    gemini_model: str = "gemini-2.5-flash"
+    gemini_model: str = "gemini-3.5-flash"
     llm_temperature: float = Field(0.0, ge=0, le=1)
     llm_max_output_tokens: int = Field(600, ge=50, le=4000)
     llm_timeout_seconds: float = Field(30.0, gt=0)

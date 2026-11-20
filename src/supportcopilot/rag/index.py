@@ -26,6 +26,8 @@ from supportcopilot.guardrails.normalize import strip_accents
 logger = logging.getLogger(__name__)
 
 RRF_K = 60
+HYBRID, DENSE, LEXICAL = "hybrid", "dense", "lexical"
+SEARCH_MODES = (HYBRID, DENSE, LEXICAL)
 _TOKEN = re.compile(r"[a-z0-9]+(?:[.\-][a-z0-9]+)*")
 # Palavras vazias em portugues e ingles: fora do BM25 para que ele pese os termos de conteudo.
 _STOPWORDS = frozenset({
@@ -94,8 +96,14 @@ class KnowledgeBase:
         norm = float(np.linalg.norm(vector))
         return vector / norm if norm else vector
 
-    def search(self, query: str, k: int = 4, candidates: int = 12) -> list[RetrievedChunk]:
-        """Os ``k`` trechos mais relevantes por RRF entre a busca densa e a lexical."""
+    def search(self, query: str, k: int = 4, candidates: int = 12, mode: str = HYBRID) -> list[RetrievedChunk]:
+        """Os ``k`` trechos mais relevantes por RRF entre a busca densa e a lexical.
+
+        ``mode`` restringe a busca a um dos lados (``dense`` ou ``lexical``); existe para a avaliacao
+        comparar as estrategias (``scripts/evaluate_rag.py``). A API usa sempre ``hybrid``.
+        """
+        if mode not in SEARCH_MODES:
+            raise ValueError(f"modo de busca desconhecido: {mode}")
         candidates = min(max(candidates, k), len(self._chunks))
         vector = self._query_vector(query)
 
@@ -115,8 +123,9 @@ class KnowledgeBase:
             order = np.argsort(bm25_scores)[::-1][:candidates]
             lexical_rank = {int(p): rank for rank, p in enumerate(order, start=1) if bm25_scores[int(p)] > 0}
 
+        rankings = {HYBRID: (dense_rank, lexical_rank), DENSE: (dense_rank,), LEXICAL: (lexical_rank,)}[mode]
         fused: dict[int, float] = {}
-        for ranking in (dense_rank, lexical_rank):
+        for ranking in rankings:
             for position, rank in ranking.items():
                 fused[position] = fused.get(position, 0.0) + 1.0 / (RRF_K + rank)
 
