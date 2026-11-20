@@ -74,6 +74,8 @@ def valid_card(value: str) -> bool:
 
 def public_ip(value: str) -> bool:
     """So IP publico identifica um assinante; 192.168.x.x e afins fazem parte do suporte tecnico."""
+    if value in PUBLIC_DNS:
+        return False
     try:
         address = ipaddress.ip_address(value)
     except ValueError:
@@ -89,36 +91,80 @@ class _Pattern:
     group: int = 0
 
 
+_CREDENTIAL_PREFIX = (
+    r"\b(?:senha|password|passwd|pwd|passphrase|pin|chave(?:\s+de\s+seguran[cç]a)?)"
+    r"(?:\s+(?:d[oae]\s+)?(?:wi-?fi|rede|roteador|admin|acesso|network|router))?"
+)
+# Resolvedores de DNS publicos: aparecem em duvidas de configuracao e nao identificam ninguem.
+PUBLIC_DNS = frozenset(
+    {"8.8.8.8", "8.8.4.4", "1.1.1.1", "1.0.0.1", "9.9.9.9", "149.112.112.112", "208.67.222.222", "208.67.220.220"}
+)
+
 # A ordem define a prioridade quando dois padroes casam no mesmo trecho.
 _PATTERNS: tuple[_Pattern, ...] = (
     _Pattern("EMAIL", re.compile(r"\b[\w.+-]+@[\w-]+(?:\.[\w-]+)+\b")),
     _Pattern("CNPJ", re.compile(r"(?<!\d)\d{2}\.?\d{3}\.?\d{3}/?\d{4}-?\d{2}(?!\d)"), valid_cnpj),
     _Pattern("CPF", re.compile(r"(?<!\d)\d{3}\.?\d{3}\.?\d{3}-?\d{2}(?!\d)"), valid_cpf),
-    _Pattern("CARTAO", re.compile(r"(?<!\d)(?:\d[ -]?){12,18}\d(?!\d)"), valid_card),
+    # IMEI tambem passa no algoritmo de Luhn; quando o texto diz que e um IMEI, nao e cartao.
+    _Pattern(
+        "CARTAO", re.compile(r"(?<!\d)(?<!imei )(?<!imei: )(?:\d[ -]?){12,18}\d(?!\d)", re.IGNORECASE), valid_card
+    ),
+    _Pattern("RG", re.compile(r"(?<![\d.])\d{1,2}\.\d{3}\.\d{3}-[\dXx](?![\d-])")),
     _Pattern("MAC", re.compile(r"\b(?:[0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}\b")),
-    _Pattern("IP", re.compile(r"(?<![\d.])(?:\d{1,3}\.){3}\d{1,3}(?![\d.])"), public_ip),
+    # Quatro numeros separados por ponto tambem sao uma versao de firmware ("versao 2.1.0.5").
+    _Pattern(
+        "IP",
+        re.compile(
+            r"(?<![\d.])(?<!firmware )(?<!vers[aã]o )(?<!version )(?<![vV])(?:\d{1,3}\.){3}\d{1,3}(?![\d.])",
+            re.IGNORECASE,
+        ),
+        public_ip,
+    ),
+    # Telefone so com evidencia de formato (DDD entre parenteses, +55 ou separadores): uma sequencia
+    # crua de 10 ou 11 digitos e mais provavelmente um protocolo ou numero de pedido.
     _Pattern(
         "TELEFONE",
-        re.compile(r"(?<![\d.])(?:\+?55[\s.-]?)?(?:\(\d{2}\)|\d{2})[\s.-]?9?\d{4}[\s.-]?\d{4}(?![\d.])"),
-        lambda value: len(_digits(value)) in (10, 11, 12, 13),
+        re.compile(
+            r"(?<![\d.])(?:"
+            r"(?:\+?55[\s.-]?)?\(\d{2}\)\s?9?[\s.-]?\d{4}[\s.-]?\d{4}"
+            r"|\+55[\s.-]?\d{2}[\s.-]?9?[\s.-]?\d{4}[\s.-]?\d{4}"
+            r"|\d{2}[\s.-]9?[\s.-]?\d{4}[\s.-]?\d{4}"
+            r"|9\d{4}[\s.-]\d{4}"
+            r")(?![\d.])"
+        ),
     ),
     _Pattern("CEP", re.compile(r"(?<!\d)\d{5}-\d{3}(?!\d)")),
-    # Segredos digitados no meio da frase: "minha senha e abc123", "password: hunter2".
+    _Pattern(
+        "NASCIMENTO",
+        re.compile(r"\b(?:nasc\w*|born|birth\w*|dob)\b\D{0,20}(\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4})(?!\d)", re.IGNORECASE),
+        group=1,
+    ),
+    # Segredos digitados no meio da frase. Tres formas, da mais para a menos explicita:
+    #   senha: valor / senha = valor      qualquer valor
+    #   senha e "valor entre aspas"       o conteudo inteiro das aspas, com espacos
+    #   senha e Valor#2024                so se o valor "parece segredo" (tem digito ou simbolo);
+    #                                     "a senha e obrigatoria" e "the password is incorrect" nao sao
+    _Pattern("SENHA", re.compile(_CREDENTIAL_PREFIX + r"\s*[:=]\s*[\"']?([^\s\"',;]{4,64})", re.IGNORECASE), group=1),
+    _Pattern(
+        "SENHA",
+        re.compile(_CREDENTIAL_PREFIX + r"\s+(?:é|eh|e|is|was|era)\s+[\"']([^\"']{4,64})[\"']", re.IGNORECASE),
+        group=1,
+    ),
     _Pattern(
         "SENHA",
         re.compile(
-            r"\b(?:senha|password|passwd|pwd|passphrase|pin|chave(?:\s+de\s+seguran[cç]a)?)"
-            r"(?:\s+(?:d[oae]\s+)?(?:wi-?fi|rede|roteador|admin|acesso|network|router))?"
-            r"\s*(?:[:=]|\b(?:e|é|eh|is|was|era)\b)\s*[\"']?([^\s\"',;]{4,64})",
+            _CREDENTIAL_PREFIX + r"\s+(?:é|eh|is|was|era)\s+((?=[^\s,;]*[\d@#$%&*!_+=^~])[^\s\"',;]{4,64})",
             re.IGNORECASE,
         ),
         group=1,
     ),
+    # Nomes so em construcoes explicitas, com inicial maiuscula ou tudo em maiusculas.
     _Pattern(
         "NOME",
         re.compile(
-            r"\b(?:[Mm]eu nome (?:e|é)|[Mm]e chamo|[Ss]ou o|[Ss]ou a|[Mm]y name is|[Ii] am called)\s+"
-            r"((?:[A-ZÀ-Ý][a-zà-ÿ]+)(?:\s+(?:d[aeo]s?\s+)?[A-ZÀ-Ý][a-zà-ÿ]+){0,3})"
+            r"\b(?:[Mm]eu nome (?:e|é)|[Mm]e chamo|[Ss]ou o|[Ss]ou a|[Mm]y name is|[Ii] am called|MEU NOME (?:E|É)"
+            r"|MY NAME IS)\s+"
+            r"((?:[A-ZÀ-Ý][a-zà-ÿ]+|[A-ZÀ-Ý]{2,})(?:\s+(?:d[aeo]s?\s+|D[AEO]S?\s+)?(?:[A-ZÀ-Ý][a-zà-ÿ]+|[A-ZÀ-Ý]{2,})){0,3})"
         ),
         group=1,
     ),

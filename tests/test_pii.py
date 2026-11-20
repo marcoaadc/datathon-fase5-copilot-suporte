@@ -32,7 +32,10 @@ class TestValidators:
     def test_invalid_card(self, value):
         assert not pii.valid_card(value)
 
-    @pytest.mark.parametrize(("value", "expected"), [("8.8.8.8", True), ("192.168.10.1", False), ("10.0.0.7", False)])
+    @pytest.mark.parametrize(
+        ("value", "expected"),
+        [("200.147.35.149", True), ("8.8.8.8", False), ("192.168.10.1", False), ("10.0.0.7", False)],
+    )
     def test_only_public_ips_identify_a_subscriber(self, value, expected):
         assert pii.public_ip(value) is expected
 
@@ -57,6 +60,13 @@ class TestRedact:
             ("password: hunter2!", "SENHA", "hunter2!"),
             ("Meu nome é Maria da Silva e preciso de ajuda", "NOME", "Maria da Silva"),
             ("My name is John Smith and the router is down", "NOME", "John Smith"),
+            ("MY NAME IS JOHN SMITH", "NOME", "JOHN SMITH"),
+            ("minha senha do wifi é 'casa 2024 forte', não conecta", "SENHA", "casa 2024 forte"),
+            ("senha=abcd1234", "SENHA", "abcd1234"),
+            ("meu celular é 11 9 1234-5678", "TELEFONE", "1234-5678"),
+            ("whatsapp 91234-5678", "TELEFONE", "91234-5678"),
+            ("meu RG é 12.345.678-9", "RG", "12.345.678-9"),
+            ("nasci em 05/03/1990 e sou o titular", "NASCIMENTO", "05/03/1990"),
         ],
     )
     def test_each_type_is_masked(self, text, label, secret):
@@ -82,6 +92,16 @@ class TestRedact:
             "Como altero a senha do Wi-Fi?",
             "Pedido 4111111111111112 não encontrado",
             "Dimensões 230 x 144 x 37 mm e 410 g",
+            "Esqueci a senha do roteador e preciso redefinir",
+            "Qual a senha do wifi e como altero?",
+            "The password is incorrect after the update",
+            "A senha é obrigatória para acessar o painel?",
+            "Posso usar o DNS 8.8.8.8 ou o 1.1.1.1?",
+            "Atualizei para o firmware 2.1.0.5 e a versão 1.4.2.0 do app",
+            "Meu protocolo é 2024123456 e o ticket é #4821937465",
+            "protocolo 20912345678 aberto ontem",
+            "IMEI 490154203237518 do celular que não conecta",
+            "A atualização foi em 05/03/2025",
         ],
     )
     def test_technical_text_is_not_masked(self, text):
