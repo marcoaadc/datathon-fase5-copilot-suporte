@@ -32,11 +32,13 @@ class Candidate:
 
 CANDIDATES: tuple[Candidate, ...] = (
     Candidate("nb_alpha0.3", "complement_nb", {"alpha": 0.3}),
-    Candidate("logreg_c3", "logistic_regression", {"C": 3.0}),
     Candidate("logreg_c10", "logistic_regression", {"C": 10.0}),
     Candidate("logreg_c30", "logistic_regression", {"C": 30.0}),
-    Candidate("svc_c0.3", "linear_svc_calibrated", {"C": 0.3}),
+    Candidate("logreg_c100", "logistic_regression", {"C": 100.0}),
+    Candidate("logreg_c30_balanced", "logistic_regression", {"C": 30.0, "class_weight": "balanced"}),
     Candidate("svc_c1", "linear_svc_calibrated", {"C": 1.0}),
+    Candidate("svc_c3", "linear_svc_calibrated", {"C": 3.0}),
+    Candidate("svc_c10", "linear_svc_calibrated", {"C": 10.0}),
 )
 
 

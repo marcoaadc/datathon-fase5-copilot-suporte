@@ -10,6 +10,7 @@ from __future__ import annotations
 import contextlib
 import logging
 import math
+import sys
 import tempfile
 from collections.abc import Iterator
 from pathlib import Path
@@ -25,6 +26,12 @@ class Tracker:
         if self.enabled:
             import mlflow
 
+            # Ao encerrar um run em servidor remoto, o MLflow imprime a URL com um emoji. Em um
+            # terminal Windows com saida redirecionada (cp1252) isso lanca UnicodeEncodeError e
+            # derruba o treino ja concluido: caracteres nao representaveis passam a ser trocados.
+            for stream in (sys.stdout, sys.stderr):
+                if hasattr(stream, "reconfigure"):
+                    stream.reconfigure(errors="replace")
             mlflow.set_tracking_uri(tracking_uri)
             mlflow.set_experiment(experiment)
             self._mlflow = mlflow
