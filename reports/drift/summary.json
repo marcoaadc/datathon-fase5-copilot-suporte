@@ -1,0 +1,209 @@
+{
+  "model_version": "20261120181832",
+  "reference_rows": 1960,
+  "psi_threshold": 0.1,
+  "drift_share": 0.3,
+  "reference_quality": {
+    "accuracy": 0.6341836734693878,
+    "f1_macro": 0.6421429486208657,
+    "mean_confidence": 0.667716923641098,
+    "mean_oov_rate": 0.0024702190124842632
+  },
+  "scenarios": [
+    {
+      "scenario": "controle",
+      "title": "Controle (sem drift)",
+      "description": "Chamados novos, da mesma distribuicao do treino. O relatorio nao deve acusar drift: e a prova de que o detector nao dispara alarme falso.",
+      "rows": 1970,
+      "mechanisms": {
+        "none": 1970
+      },
+      "mean_chars": 401.97055837563454,
+      "evidently": {
+        "method": "psi",
+        "threshold": 0.1,
+        "n_columns": 10,
+        "n_drifted": 0,
+        "share_drifted": 0.0,
+        "drifted_columns": [],
+        "psi": {
+          "n_chars": 0.01445,
+          "n_words": 0.02041,
+          "mean_word_length": 0.00179,
+          "oov_rate": 0.00538,
+          "non_ascii_ratio": 0.01263,
+          "upper_ratio": 0.01242,
+          "digit_ratio": 0.01214,
+          "confidence": 0.01028,
+          "technical_probability": 0.01153,
+          "predicted_queue": 0.0081
+        },
+        "tests_total": 15,
+        "tests_failed": 0,
+        "failed_tests": []
+      },
+      "psi_own": {
+        "n_chars": 0.0055,
+        "n_words": 0.00778,
+        "mean_word_length": 0.00623,
+        "oov_rate": 0.00233,
+        "non_ascii_ratio": 0.00469,
+        "upper_ratio": 0.00504,
+        "digit_ratio": 0.00021,
+        "confidence": 0.00576,
+        "technical_probability": 0.00684,
+        "predicted_queue": 0.0081
+      },
+      "quality": {
+        "accuracy": 0.6355329949238578,
+        "f1_macro": 0.651949006374899,
+        "mean_confidence": 0.6606966797199686,
+        "mean_oov_rate": 0.0037221147765496673
+      },
+      "html": "drift_controle.html"
+    },
+    {
+      "scenario": "moderado",
+      "title": "Drift moderado",
+      "description": "Inicio da degradacao: 15% dos chamados em alemao, incidente dobrando os chamados de indisponibilidade e 10% de texto com erros de digitacao.",
+      "rows": 1970,
+      "mechanisms": {
+        "prior": 1492,
+        "language": 296,
+        "noise": 182
+      },
+      "mean_chars": 404.5690355329949,
+      "evidently": {
+        "method": "psi",
+        "threshold": 0.1,
+        "n_columns": 10,
+        "n_drifted": 3,
+        "share_drifted": 0.3,
+        "drifted_columns": [
+          "non_ascii_ratio",
+          "oov_rate",
+          "upper_ratio"
+        ],
+        "psi": {
+          "n_chars": 0.03136,
+          "n_words": 0.01752,
+          "mean_word_length": 0.07773,
+          "oov_rate": 1.17615,
+          "non_ascii_ratio": 0.16928,
+          "upper_ratio": 0.32111,
+          "digit_ratio": 0.0133,
+          "confidence": 0.03499,
+          "technical_probability": 0.03046,
+          "predicted_queue": 0.03702
+        },
+        "tests_total": 15,
+        "tests_failed": 4,
+        "failed_tests": [
+          "Share of Drifted Columns: Less 0.300",
+          "Value Drift for column oov_rate",
+          "Value Drift for column non_ascii_ratio",
+          "Value Drift for column upper_ratio"
+        ]
+      },
+      "psi_own": {
+        "n_chars": 0.01204,
+        "n_words": 0.01497,
+        "mean_word_length": 0.07074,
+        "oov_rate": 0.25112,
+        "non_ascii_ratio": 0.4023,
+        "upper_ratio": 0.09578,
+        "digit_ratio": 0.00169,
+        "confidence": 0.02859,
+        "technical_probability": 0.02673,
+        "predicted_queue": 0.03701
+      },
+      "quality": {
+        "accuracy": 0.5934010152284264,
+        "f1_macro": 0.6123858720137224,
+        "mean_confidence": 0.6398859426165698,
+        "mean_oov_rate": 0.12289701149683738
+      },
+      "html": "drift_moderado.html"
+    },
+    {
+      "scenario": "severo",
+      "title": "Drift severo",
+      "description": "Degradacao instalada: 45% dos chamados em alemao, incidente em massa (6x indisponibilidade, 2x cobranca), 30% de texto com ruido e 15% de mensagens truncadas.",
+      "rows": 1970,
+      "mechanisms": {
+        "language": 886,
+        "prior": 589,
+        "noise": 338,
+        "truncate": 157
+      },
+      "mean_chars": 370.48477157360406,
+      "evidently": {
+        "method": "psi",
+        "threshold": 0.1,
+        "n_columns": 10,
+        "n_drifted": 9,
+        "share_drifted": 0.9,
+        "drifted_columns": [
+          "confidence",
+          "mean_word_length",
+          "n_chars",
+          "n_words",
+          "non_ascii_ratio",
+          "oov_rate",
+          "predicted_queue",
+          "technical_probability",
+          "upper_ratio"
+        ],
+        "psi": {
+          "n_chars": 0.34969,
+          "n_words": 0.23434,
+          "mean_word_length": 0.49839,
+          "oov_rate": 4.13427,
+          "non_ascii_ratio": 0.66441,
+          "upper_ratio": 1.34614,
+          "digit_ratio": 0.01778,
+          "confidence": 0.16829,
+          "technical_probability": 0.11026,
+          "predicted_queue": 0.14266
+        },
+        "tests_total": 15,
+        "tests_failed": 14,
+        "failed_tests": [
+          "Share of Drifted Columns: Less 0.300",
+          "Value Drift for column n_chars",
+          "Value Drift for column n_words",
+          "Value Drift for column mean_word_length",
+          "Value Drift for column oov_rate",
+          "Value Drift for column non_ascii_ratio",
+          "Value Drift for column upper_ratio",
+          "Value Drift for column confidence",
+          "Value Drift for column technical_probability",
+          "Value Drift for column predicted_queue",
+          "Accuracy metric: Equal 0.634 ± 0.127",
+          "Precision metric: Equal 0.668 ± 0.134",
+          "Recall metric: Equal 0.624 ± 0.125",
+          "F1 score metric: Equal 0.642 ± 0.128"
+        ]
+      },
+      "psi_own": {
+        "n_chars": 0.20169,
+        "n_words": 0.16941,
+        "mean_word_length": 0.44808,
+        "oov_rate": 1.42481,
+        "non_ascii_ratio": 1.54315,
+        "upper_ratio": 0.81701,
+        "digit_ratio": 0.00898,
+        "confidence": 0.14076,
+        "technical_probability": 0.11201,
+        "predicted_queue": 0.14264
+      },
+      "quality": {
+        "accuracy": 0.47106598984771575,
+        "f1_macro": 0.42570084490298477,
+        "mean_confidence": 0.6050469278425598,
+        "mean_oov_rate": 0.3599316567996615
+      },
+      "html": "drift_severo.html"
+    }
+  ]
+}
