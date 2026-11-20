@@ -1116,9 +1116,9 @@ google-genai==3.6.1 ; python_full_version == "3.11.*" or python_full_version == 
 graphene==3.4.3 \
     --hash=sha256:2a3786948ce75fe7e078443d37f609cbe5bb36ad8d6b828740ad3b95ed1a0aaa \
     --hash=sha256:820db6289754c181007a150db1f7fff544b94142b556d12e3ebc777a7bf36c71
-graphql-core==3.2.14 \
-    --hash=sha256:efec124d951f2997e8f28bb9f056d0a3b4b11dce720e2225723ec20fac570af5 \
-    --hash=sha256:fb0eaaad81c558325f037a79dab7c6dd568cd17196030fb5c46fc4996948cc42
+graphql-core==3.3.2 \
+    --hash=sha256:15d6eee7d4364fbc202833bc6bd0d504004d8ae7c0aaf620fa884d8e437622f2 \
+    --hash=sha256:d83f49ee18d2db89fb575dab6ffefa8aa1bf5f60dff8a6781db6f63420041348
 graphql-relay==3.2.0 \
     --hash=sha256:1ff1c51298356e481a0be009ccdff249832ce53f30559c1338f22a0e0d17250c \
     --hash=sha256:c9b22bd28b170ba1fe674c74384a8ff30a76c8e26f88ac3aa1584dd3179953e5
