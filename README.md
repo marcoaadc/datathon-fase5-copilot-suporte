@@ -4,6 +4,8 @@
 [![Código: ruff](https://img.shields.io/badge/c%C3%B3digo-ruff-261230)](https://github.com/astral-sh/ruff)
 [![Licença: MIT](https://img.shields.io/badge/licen%C3%A7a-MIT-green)](LICENSE)
 
+> Relatório de drift do Evidently (cenário severo): **[abrir no navegador](https://marcoaadc.github.io/datathon-fase5-copilot-suporte/reports/drift/drift_severo.html)**
+
 Motor de um **Copilot de Suporte** de ponta a ponta. O sistema recebe um chamado; um modelo clássico classifica a fila de atendimento e um monitor acompanha se os dados estão sofrendo drift. Se o chamado for um problema técnico, a API aciona um pipeline RAG que lê manuais em PDF e gera a solução com um LLM, depois de passar por guardrails de segurança e pelo mascaramento de dados pessoais.
 
 | | |
@@ -92,7 +94,7 @@ O número honesto é o do conjunto cego: um filtro por padrões barra cerca de t
 | Moderado | 3/10 | 0,593 | 12,3% |
 | Severo | 9/10 | 0,471 | 36,0% |
 
-Relatórios HTML: [controle](reports/drift/drift_controle.html), [moderado](reports/drift/drift_moderado.html), [severo](reports/drift/drift_severo.html).
+Relatórios do Evidently, abertos direto no navegador (GitHub Pages): [controle](https://marcoaadc.github.io/datathon-fase5-copilot-suporte/reports/drift/drift_controle.html), [moderado](https://marcoaadc.github.io/datathon-fase5-copilot-suporte/reports/drift/drift_moderado.html), [severo](https://marcoaadc.github.io/datathon-fase5-copilot-suporte/reports/drift/drift_severo.html). Os mesmos arquivos estão em [`reports/drift/`](reports/drift/).
 
 ## 3. Onde está cada requisito do enunciado
 

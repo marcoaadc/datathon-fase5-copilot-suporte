@@ -65,9 +65,9 @@ Fonte: [`reports/drift/summary.md`](../reports/drift/summary.md) e [`summary.jso
 | Cenário | Colunas com drift | Acurácia | F1 macro | Confiança média | Fora do vocabulário | Relatório |
 |---|---|---|---|---|---|---|
 | Referência (teste) | - | 0,634 | 0,642 | 0,668 | 0,2% | |
-| Controle | 0/10 | 0,636 | 0,652 | 0,661 | 0,4% | [HTML](../reports/drift/drift_controle.html) |
-| Moderado | 3/10 | 0,593 | 0,612 | 0,640 | 12,3% | [HTML](../reports/drift/drift_moderado.html) |
-| Severo | 9/10 | 0,471 | 0,426 | 0,605 | 36,0% | [HTML](../reports/drift/drift_severo.html) |
+| Controle | 0/10 | 0,636 | 0,652 | 0,661 | 0,4% | [abrir](https://marcoaadc.github.io/datathon-fase5-copilot-suporte/reports/drift/drift_controle.html) |
+| Moderado | 3/10 | 0,593 | 0,612 | 0,640 | 12,3% | [abrir](https://marcoaadc.github.io/datathon-fase5-copilot-suporte/reports/drift/drift_moderado.html) |
+| Severo | 9/10 | 0,471 | 0,426 | 0,605 | 36,0% | [abrir](https://marcoaadc.github.io/datathon-fase5-copilot-suporte/reports/drift/drift_severo.html) |
 
 ### Leitura
 
