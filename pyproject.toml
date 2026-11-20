@@ -62,7 +62,7 @@ ignore = ["RUF001", "RUF002", "RUF003"]
 # Catalogo de expressoes regulares: quebrar as linhas atrapalha a leitura dos padroes.
 "src/supportcopilot/guardrails/rules.py" = ["E501"]
 "src/supportcopilot/guardrails/engine.py" = ["E501"]
-"tests/*" = ["S101", "S105", "S106"]
+"tests/*" = ["S101", "S105", "S106", "RUF012"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["supportcopilot"]
