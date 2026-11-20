@@ -3,11 +3,12 @@
 Fonte: ``Tobi-Bueck/customer-support-tickets`` (Hugging Face, CC BY-NC 4.0), chamados em ingles e
 alemao rotulados com a fila de atendimento. O projeto usa:
 
-* ingles  -> Referencia: treino, validacao e teste do modelo de triagem;
+* ingles  -> Referencia: treino, validacao e teste do modelo de triagem, mais uma particao
+  ``production`` que o modelo nunca ve e que faz o papel do fluxo futuro de chamados;
 * alemao  -> reservatorio de drift: chamados reais em um idioma que o modelo nunca viu, usados
   pelo simulador para degradar a "producao" (ver ``supportcopilot.drift.simulate``).
 
-A separacao treino/validacao/teste e feita por grupos de quase-duplicatas: o dataset e sintetico e
+A separacao entre as particoes e feita por grupos de quase-duplicatas: o dataset e sintetico e
 traz parafrases do mesmo chamado; se uma parafrase caisse no treino e outra no teste, a metrica do
 teste mediria memorizacao, nao generalizacao.
 """
@@ -60,6 +61,7 @@ class IngestSummary:
     train_rows: int
     validation_rows: int
     test_rows: int
+    production_rows: int
     sha256: str
 
 
@@ -154,23 +156,31 @@ def near_duplicate_groups(texts: pd.Series, threshold: float = NEAR_DUPLICATE_SI
     return groups
 
 
+def _carve(frame: pd.DataFrame, fraction: float, seed: int) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Separa ``fraction`` das linhas sem partir nenhum grupo de parafrases."""
+    splitter = GroupShuffleSplit(n_splits=1, test_size=fraction, random_state=seed)
+    rest_idx, carved_idx = next(splitter.split(frame, frame[TARGET], groups=frame[GROUP]))
+    return frame.iloc[rest_idx], frame.iloc[carved_idx]
+
+
 def split_reference(frame: pd.DataFrame, settings: Settings) -> dict[str, pd.DataFrame]:
-    """Treino/validacao/teste sem que um grupo de parafrases atravesse particoes."""
-    holdout = settings.test_fraction + settings.validation_fraction
-    outer = GroupShuffleSplit(n_splits=1, test_size=holdout, random_state=settings.seed)
-    train_idx, holdout_idx = next(outer.split(frame, frame[TARGET], groups=frame[GROUP]))
-    rest = frame.iloc[holdout_idx]
-    inner = GroupShuffleSplit(n_splits=1, test_size=settings.test_fraction / holdout, random_state=settings.seed)
-    validation_idx, test_idx = next(inner.split(rest, rest[TARGET], groups=rest[GROUP]))
-    return {
-        "train": frame.iloc[train_idx].reset_index(drop=True),
-        "validation": rest.iloc[validation_idx].reset_index(drop=True),
-        "test": rest.iloc[test_idx].reset_index(drop=True),
-    }
+    """Treino/validacao/teste/producao sem que um grupo de parafrases atravesse particoes."""
+    remaining = 1.0
+    partitions: dict[str, pd.DataFrame] = {}
+    rest = frame
+    for name, fraction in (
+        ("production", settings.production_fraction),
+        ("test", settings.test_fraction),
+        ("validation", settings.validation_fraction),
+    ):
+        rest, partitions[name] = _carve(rest, fraction / remaining, settings.seed)
+        remaining -= fraction
+    partitions["train"] = rest
+    return {name: partitions[name].reset_index(drop=True) for name in ("train", "validation", "test", "production")}
 
 
 def prepare(raw: pd.DataFrame, settings: Settings) -> tuple[dict[str, pd.DataFrame], dict[str, int]]:
-    """Limpa o dataset bruto e devolve as particoes (``train``, ``validation``, ``test``, ``drift_pool``)."""
+    """Limpa o dataset bruto e devolve ``train``, ``validation``, ``test``, ``production`` e ``drift_pool``."""
     frame, stats = clean_tickets(raw, settings.max_text_chars)
     reference = frame[frame[LANGUAGE] == settings.reference_language].reset_index(drop=True)
     drift_pool = frame[frame[LANGUAGE] == settings.drift_language].reset_index(drop=True)
@@ -206,6 +216,7 @@ def run(settings: Settings, force_download: bool = False) -> IngestSummary:
         train_rows=len(partitions["train"]),
         validation_rows=len(partitions["validation"]),
         test_rows=len(partitions["test"]),
+        production_rows=len(partitions["production"]),
         sha256=sha256_of(path),
         **stats,
     )

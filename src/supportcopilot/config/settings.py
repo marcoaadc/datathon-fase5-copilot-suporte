@@ -52,8 +52,10 @@ class Settings(BaseSettings):
     dataset_sha256: str = DATASET_SHA256
     reference_language: str = "en"
     drift_language: str = "de"
-    test_fraction: float = Field(0.15, gt=0, lt=0.5)
-    validation_fraction: float = Field(0.15, gt=0, lt=0.5)
+    validation_fraction: float = Field(0.12, gt=0, lt=0.3)
+    test_fraction: float = Field(0.12, gt=0, lt=0.3)
+    # Chamados da referencia reservados para simular o fluxo de producao (nunca vistos no treino).
+    production_fraction: float = Field(0.12, gt=0, lt=0.3)
 
     # Contrato de entrada (o mesmo limite vale no treino e na API)
     max_text_chars: int = Field(1000, ge=10)
