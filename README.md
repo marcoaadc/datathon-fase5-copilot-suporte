@@ -16,6 +16,16 @@ Motor de um **Copilot de Suporte** de ponta a ponta. O sistema recebe um chamado
 | **Drift** | Relatórios do Evidently: 0/10 colunas com drift no controle, 9/10 no cenário severo, com a acurácia caindo de 0,636 para 0,471 |
 | **Engenharia** | 580 testes, 98% de cobertura, imagem Docker não-root, receita da imagem verificada em Linux |
 
+### Guia rápido para a avaliação
+
+| Critério do enunciado | Peso | Onde ver |
+|---|---|---|
+| Modelagem e tracking | 20% | [Seção 6](#6-etapa-1--triagem-api-e-tracking), [`reports/mlflow/summary.md`](reports/mlflow/summary.md), [model card](docs/model_card.md) |
+| RAG e guardrails | 30% | [Seção 7](#7-etapa-2--rag-e-guardrails), [docs/guardrails.md](docs/guardrails.md), [avaliação da busca](reports/rag/retrieval_eval.md) |
+| Observabilidade e validação | 20% | [Seção 8](#8-etapa-3--observabilidade-drift-e-validação), [relatório do Evidently](https://marcoaadc.github.io/datathon-fase5-copilot-suporte/reports/drift/drift_severo.html), [docs/drift.md](docs/drift.md) |
+| Nuvem e governança | 15% | [Seção 9 (nuvem)](#9-etapa-4--arquitetura-de-nuvem) e [seção 10 (LGPD)](#10-etapa-4--privacy-by-design-e-lgpd) |
+| Engenharia | 15% | [`Dockerfile`](Dockerfile), [`requirements.txt`](requirements.txt), [seção 5 (como executar)](#5-como-executar), [seção 11 (o que não foi verificado)](#11-limitações-e-o-que-não-foi-verificado) |
+
 ## Sumário
 
 1. [O problema](#1-o-problema)
