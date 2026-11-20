@@ -148,7 +148,11 @@ class ChatService:
             response = self._llm.client.invoke(prompts.build_messages(safe_question, context, self._canary))
         except Exception as error:  # falha do provedor nao derruba a requisicao
             timings["llm"] = (time.perf_counter() - started) * 1000
-            logger.warning("falha na chamada ao LLM (%s); usando modo extrativo", type(error).__name__)
+            # A mensagem do provedor (modelo inexistente, cota, timeout) nao contem o texto do usuario.
+            logger.warning(
+                "falha na chamada ao LLM; usando modo extrativo",
+                extra={"error_type": type(error).__name__, "error": str(error)[:300]},
+            )
             return ChatResult(
                 ANSWERED,
                 self._extractive(context),
