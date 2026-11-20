@@ -68,14 +68,17 @@ class KnowledgeBase:
         self._embeddings = embeddings
         texts = [indexed_text(chunk) for chunk in chunks]
         ids = [str(position) for position in range(len(chunks))]
-        # Vetores normalizados + produto interno = similaridade de cosseno.
-        self._store = FAISS.from_texts(
-            texts,
+        # Vetores normalizados aqui (norma 1) + produto interno = similaridade de cosseno, qualquer
+        # que seja o modelo de embeddings (nem todos devolvem vetores unitarios).
+        vectors = np.asarray(embeddings.embed_documents(texts), dtype=np.float32)
+        norms = np.linalg.norm(vectors, axis=1, keepdims=True)
+        vectors = vectors / np.where(norms == 0, 1.0, norms)
+        self._store = FAISS.from_embeddings(
+            list(zip(texts, vectors.tolist(), strict=True)),
             embeddings,
             metadatas=[{"position": position} for position in range(len(chunks))],
             ids=ids,
             distance_strategy=DistanceStrategy.MAX_INNER_PRODUCT,
-            normalize_L2=True,
         )
         self._bm25 = BM25Okapi([tokenize(text) or ["_"] for text in texts])
 

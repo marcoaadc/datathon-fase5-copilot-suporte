@@ -15,6 +15,7 @@ Ordem das etapas e o que cada uma garante:
 from __future__ import annotations
 
 import logging
+import re
 import time
 from dataclasses import dataclass, field
 from typing import Any
@@ -44,6 +45,7 @@ NOT_FOUND_MESSAGE = (
 )
 EXTRACTIVE_HEADER = "Trechos do manual mais relevantes para a sua pergunta:"
 EXTRACTIVE_MAX_CHUNKS = 3
+_PLACEHOLDER = re.compile(r"\[[A-Z]{2,10}\]")
 
 
 @dataclass(frozen=True)
@@ -127,7 +129,9 @@ class ChatService:
         safe_question = redaction.text
 
         started = time.perf_counter()
-        retrieved = self._kb.search(safe_question, k=self._k, candidates=self._candidates)
+        # Os marcadores ([CPF], [EMAIL]...) nao ajudam a busca: saem da consulta, ficam no prompt.
+        query = _PLACEHOLDER.sub(" ", safe_question).strip() or safe_question
+        retrieved = self._kb.search(query, k=self._k, candidates=self._candidates)
         timings["retrieval"] = (time.perf_counter() - started) * 1000
         relevant = [chunk for chunk in retrieved if chunk.similarity >= self._min_relevance]
         if not relevant:
@@ -169,7 +173,7 @@ class ChatService:
             [chunk.text for chunk in context],
             question=safe_question,
             canary=self._canary,
-            protected_phrases=prompts.PROTECTED_PHRASES,
+            protected_text=prompts.system_prompt(self._canary),
             check_grounding=self._grounding_check,
         )
         timings["guardrails_output"] = (time.perf_counter() - started) * 1000

@@ -49,6 +49,12 @@ SECURITY_HEADERS = {
     "Referrer-Policy": "no-referrer",
     "Cache-Control": "no-store",
 }
+VALIDATION_MESSAGES = {
+    "extra_forbidden": "campo nao permitido pelo contrato",
+    "missing": "campo obrigatorio ausente",
+    "json_invalid": "o corpo da requisicao nao e um JSON valido",
+    "model_attributes_type": "o corpo da requisicao deve ser um objeto JSON",
+}
 ERROR_RESPONSES: dict[int | str, dict[str, Any]] = {
     401: {"model": schemas.ErrorResponse, "description": "Chave de API ausente ou invalida"},
     413: {"model": schemas.ErrorResponse, "description": "Corpo da requisicao acima do limite"},
@@ -180,7 +186,9 @@ def create_app(settings: Settings | None = None, container: Container | None = N
         details = []
         for item in error.errors():
             location = [str(part) for part in item.get("loc", ()) if part != "body"]
-            message = str(item.get("msg", "valor invalido")).removeprefix("Value error, ")
+            message = VALIDATION_MESSAGES.get(
+                str(item.get("type")), str(item.get("msg", "valor invalido")).removeprefix("Value error, ")
+            )
             # O valor recebido nunca e devolvido nem logado: pode conter dado pessoal.
             details.append({"field": ".".join(location) or "body", "message": message})
         return _error(422, "validation_error", "A requisicao nao atende ao contrato de entrada.", details)
