@@ -1,0 +1,10 @@
+# Tudo fora, exceto o que a imagem precisa.
+*
+!requirements.txt
+!requirements-pipelines.txt
+!src/
+!scripts/
+!models/triage/
+!data/manuals/
+**/__pycache__/
+**/*.pyc

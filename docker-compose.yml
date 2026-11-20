@@ -1,0 +1,60 @@
+# Ambiente local completo: API + servidor MLflow.
+#
+#   docker compose up --build              API em http://localhost:8000/docs e MLflow em http://localhost:5000
+#   docker compose run --rm pipelines      baixa o dataset, treina (rastreado no MLflow) e gera os relatorios de drift
+#
+# As chaves de LLM vem do arquivo .env (copie de .env.example). Sem chave, o /chat responde em modo extrativo.
+
+services:
+  api:
+    build:
+      context: .
+      target: runtime
+    image: support-copilot:latest
+    ports:
+      - "8000:8000"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      COPILOT_ENVIRONMENT: compose
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    restart: unless-stopped
+
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v3.18.0
+    command: >
+      mlflow server
+      --backend-store-uri sqlite:////mlflow/mlflow.db
+      --artifacts-destination /mlflow/artifacts
+      --host 0.0.0.0
+      --port 5000
+    ports:
+      - "5000:5000"
+    volumes:
+      - mlflow-data:/mlflow
+    restart: unless-stopped
+
+  pipelines:
+    profiles: ["pipelines"]
+    build:
+      context: .
+      target: pipelines
+    image: support-copilot-pipelines:latest
+    environment:
+      COPILOT_MLFLOW_TRACKING_URI: http://mlflow:5000
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./reports:/app/reports
+    depends_on:
+      - mlflow
+
+volumes:
+  mlflow-data:
