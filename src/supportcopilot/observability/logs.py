@@ -15,7 +15,18 @@ from datetime import datetime, timezone
 request_id_var: ContextVar[str] = ContextVar("request_id", default="-")
 
 _RESERVED = set(logging.LogRecord("", 0, "", 0, "", (), None).__dict__) | {"message", "asctime"}
-_NOISY = ("mlflow", "alembic", "matplotlib", "urllib3", "evidently", "httpx", "httpcore", "fastembed", "faiss")
+_NOISY = (
+    "mlflow",
+    "alembic",
+    "matplotlib",
+    "urllib3",
+    "evidently",
+    "httpx",
+    "httpx2",
+    "httpcore",
+    "fastembed",
+    "faiss",
+)
 
 
 class JsonFormatter(logging.Formatter):

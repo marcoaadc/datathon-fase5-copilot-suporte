@@ -40,6 +40,7 @@ from supportcopilot.triage.service import TriagePrediction
 logger = logging.getLogger("supportcopilot.api")
 
 MAX_BODY_BYTES = 64 * 1024
+BODY_METHODS = frozenset({"POST", "PUT", "PATCH"})
 OPEN_PATHS = frozenset({"/", "/health", "/ready", "/metrics", "/docs", "/redoc", "/openapi.json"})
 EXCERPT_CHARS = 280
 REQUEST_ID_HEADER = "X-Request-ID"
@@ -57,6 +58,7 @@ VALIDATION_MESSAGES = {
 }
 ERROR_RESPONSES: dict[int | str, dict[str, Any]] = {
     401: {"model": schemas.ErrorResponse, "description": "Chave de API ausente ou invalida"},
+    411: {"model": schemas.ErrorResponse, "description": "Content-Length ausente"},
     413: {"model": schemas.ErrorResponse, "description": "Corpo da requisicao acima do limite"},
     422: {"model": schemas.ErrorResponse, "description": "Entrada reprovada pelo contrato de dados"},
     429: {"model": schemas.ErrorResponse, "description": "Limite de requisicoes excedido"},
@@ -113,13 +115,6 @@ def create_app(settings: Settings | None = None, container: Container | None = N
         lifespan=lifespan,
         license_info={"name": "MIT"},
     )
-    if settings.cors_origins:
-        app.add_middleware(
-            CORSMiddleware,
-            allow_origins=list(settings.cors_origins),
-            allow_methods=["GET", "POST"],
-            allow_headers=["Content-Type", API_KEY_HEADER, REQUEST_ID_HEADER],
-        )
 
     def state_of(request: Request) -> Container:
         return request.app.state.container
@@ -161,23 +156,40 @@ def create_app(settings: Settings | None = None, container: Container | None = N
         return response
 
     def _precheck(request: Request, path: str) -> JSONResponse | None:
-        """Controles que rodam antes da rota: tamanho do corpo, autenticacao e limite de taxa."""
-        length = request.headers.get("content-length", "0")
-        if not length.isdigit() or int(length) > MAX_BODY_BYTES:
-            return _error(413, "payload_too_large", f"O corpo da requisicao excede {MAX_BODY_BYTES} bytes.")
+        """Controles que rodam antes da rota: tamanho do corpo, limite de taxa e autenticacao."""
+        if request.method in BODY_METHODS:
+            # O tamanho precisa ser declarado: sem Content-Length (envio em blocos) nao ha como
+            # recusar um corpo grande antes de le-lo inteiro.
+            length = request.headers.get("content-length")
+            if length is None or not length.isdigit():
+                return _error(411, "length_required", "Informe o cabecalho Content-Length.")
+            if int(length) > MAX_BODY_BYTES:
+                return _error(413, "payload_too_large", f"O corpo da requisicao excede {MAX_BODY_BYTES} bytes.")
         if path in OPEN_PATHS:
             return None
-        if settings.api_key is not None and not api_key_matches(
-            request.headers.get(API_KEY_HEADER), settings.api_key.get_secret_value()
-        ):
-            return _error(401, "unauthorized", f"Informe uma chave valida no cabecalho {API_KEY_HEADER}.")
+        # O limite de taxa vem antes da chave: tentativas com chave errada tambem sao contadas.
         client = request.client.host if request.client else "unknown"
         allowed, retry_after = limiter.allow(client)
         if not allowed:
             response = _error(429, "rate_limited", "Limite de requisicoes excedido. Tente novamente em instantes.")
             response.headers["Retry-After"] = str(retry_after)
             return response
+        if settings.api_key is not None and not api_key_matches(
+            request.headers.get(API_KEY_HEADER), settings.api_key.get_secret_value()
+        ):
+            return _error(401, "unauthorized", f"Informe uma chave valida no cabecalho {API_KEY_HEADER}.")
         return None
+
+    # O CORS e adicionado depois do middleware acima para ficar por fora dele: a requisicao de
+    # preflight (OPTIONS, sem chave) e respondida antes da autenticacao, e as respostas de erro
+    # tambem saem com os cabecalhos de CORS.
+    if settings.cors_origins:
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=list(settings.cors_origins),
+            allow_methods=["GET", "POST"],
+            allow_headers=["Content-Type", API_KEY_HEADER, REQUEST_ID_HEADER],
+        )
 
     # ------------------------------------------------------------------ erros
     @app.exception_handler(RequestValidationError)
@@ -319,6 +331,11 @@ def create_app(settings: Settings | None = None, container: Container | None = N
         prediction = run_triage(state, payload.text)
         triage_response = to_triage_response(prediction, state.triage.version)
         if not prediction.is_technical:
+            return schemas.TicketResponse(route="human_queue", triage=triage_response, request_id=request_id_var.get())
+        if state.chat is None:
+            # Sem base de conhecimento, o chamado tecnico segue para a fila humana: a triagem ja
+            # feita nao e descartada por causa de um componente indisponivel.
+            logger.warning("rag indisponivel; chamado tecnico encaminhado para a fila humana")
             return schemas.TicketResponse(route="human_queue", triage=triage_response, request_id=request_id_var.get())
         chat_response = to_chat_response(run_chat(state, payload.text), state)
         return schemas.TicketResponse(

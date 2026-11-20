@@ -12,7 +12,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from pydantic import AliasChoices, Field, SecretStr
+from pydantic import AliasChoices, Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Revisao fixa do dataset no Hugging Face: o download e reproduzivel e o hash e conferido.
@@ -104,7 +104,9 @@ class Settings(BaseSettings):
 
     # Monitor de drift em producao (janela deslizante de requisicoes)
     drift_window_size: int = Field(500, ge=50)
-    drift_min_samples: int = Field(100, ge=20)
+    # Em janelas simuladas sem drift, o ruido amostral do PSI da alarme falso em 38% das janelas de
+    # 100 chamados e em 0,1% das de 200 (ver docs/drift.md).
+    drift_min_samples: int = Field(200, ge=20)
     psi_warning: float = Field(0.10, gt=0)
     psi_critical: float = Field(0.25, gt=0)
 
@@ -112,6 +114,14 @@ class Settings(BaseSettings):
     api_key: SecretStr | None = None
     rate_limit_per_minute: int = Field(120, ge=0)
     cors_origins: tuple[str, ...] = ()
+
+    @field_validator("api_key", "openai_api_key", "google_api_key", mode="before")
+    @classmethod
+    def _empty_secret_is_unset(cls, value: object) -> object:
+        """``COPILOT_API_KEY=`` (vazio) significa "sem chave", e nao "a chave e a string vazia"."""
+        if isinstance(value, str) and not value.strip():
+            return None
+        return value
 
     # ------------------------------------------------------------------ caminhos derivados
     @property

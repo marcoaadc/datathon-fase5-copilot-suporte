@@ -14,10 +14,15 @@ from tests.conftest import build_settings, make_tickets
 
 class TestCleanText:
     def test_unescapes_newlines_and_breaks(self):
-        assert clean_text("Dear team,\\n\\nMy router<br>is down") == "Dear team,\nMy router\nis down"
+        assert clean_text("Dear team,\\n\\nMy router<br>is down", unescape=True) == "Dear team,\nMy router\nis down"
+
+    def test_backslashes_from_users_are_kept_by_default(self):
+        path = "C:\\network\\temp\\new.txt"
+        assert clean_text(f"Erro em {path}") == f"Erro em {path}"
+        assert compose_ticket(None, "linha 1\\nlinha 2") == "linha 1\nlinha 2"
 
     def test_removes_invisible_characters(self):
-        assert clean_text("ro​te‮ador\x00") == "roteador"
+        assert clean_text("ro\u200bte\u202eador\x00") == "roteador"
 
     def test_collapses_spaces_and_blank_lines(self):
         assert clean_text("  a   b \n\n\n  c  ") == "a b\nc"

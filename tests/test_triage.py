@@ -147,8 +147,8 @@ class TestService:
         assert all(not isinstance(value, str) or value in service.classes for value in features.values())
 
     def test_same_cleaning_as_training(self, service):
-        raw = "The router keeps dropping\\n\\nthe wireless   connection every 3 minutes"
-        clean = "The router keeps dropping\nthe wireless connection every 3 minutes"
+        raw = "  The router keeps dropping\n\n\nthe wireless   connection<br>and the wifi is slow  "
+        clean = "The router keeps dropping\nthe wireless connection\nand the wifi is slow"
         assert service.predict(raw).confidence == pytest.approx(service.predict(clean).confidence)
 
     def test_version_comes_from_metadata(self, service):

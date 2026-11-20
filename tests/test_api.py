@@ -26,7 +26,7 @@ class TestValidation:
         [
             ({"text": ""}, "text", "vazio"),
             ({"text": "   \n\t "}, "text", "vazio"),
-            ({"text": "​​"}, "text", "vazio"),
+            ({"text": "\u200b\u200b"}, "text", "vazio"),
             ({"text": "x" * 1001}, "text", "1000 caracteres"),
             ({"text": "ok " * 2000}, "text", "1000 caracteres"),
             ({"text": "12345 !!! ???"}, "text", "legivel"),
@@ -75,6 +75,20 @@ class TestValidation:
         response = client.post("/triage", json={"text": "a" * (MAX_BODY_BYTES + 10)})
         assert response.status_code == 413
         assert response.json()["error"]["code"] == "payload_too_large"
+
+    def test_body_without_declared_length_is_refused_unread(self, client):
+        def chunks():
+            yield b'{"text": "'
+            yield b"a" * (MAX_BODY_BYTES * 2)
+            yield b'"}'
+
+        response = client.post("/triage", content=chunks(), headers={"Content-Type": "application/json"})
+        assert response.status_code == 411
+        assert response.json()["error"]["code"] == "length_required"
+
+    def test_windows_path_in_ticket_is_not_mangled(self, client):
+        text = "The router backup fails when saving to C:" + chr(92) + "network" + chr(92) + "temp, connection drops"
+        assert client.post("/triage", json={"text": text}).status_code == 200
 
     def test_validation_errors_are_counted(self, client):
         client.post("/triage", json={"text": ""})
@@ -217,6 +231,39 @@ class TestSecurity:
             assert api.get("/health").status_code == 200
             assert api.get("/ready").status_code == 200
             assert api.get("/metrics").status_code == 200
+
+    def test_empty_api_key_means_no_authentication(self, base_container, workspace, monkeypatch):
+        monkeypatch.setenv("COPILOT_API_KEY", "")
+        settings = build_settings(workspace)
+        assert settings.api_key is None
+        with TestClient(create_app(container=fresh_container(base_container, settings))) as api:
+            assert api.post("/triage", json={"text": TECH_TICKET}).status_code == 200
+
+    def test_cors_preflight_is_answered_before_authentication(self, base_container, workspace):
+        settings = build_settings(workspace, api_key="segredo-forte", cors_origins=("https://app.exemplo.com",))
+        with TestClient(create_app(container=fresh_container(base_container, settings))) as api:
+            preflight = api.options(
+                "/chat",
+                headers={
+                    "Origin": "https://app.exemplo.com",
+                    "Access-Control-Request-Method": "POST",
+                    "Access-Control-Request-Headers": "content-type,x-api-key",
+                },
+            )
+            denied = api.post("/chat", json={"question": QUESTION}, headers={"Origin": "https://app.exemplo.com"})
+        assert preflight.status_code == 200
+        assert preflight.headers["access-control-allow-origin"] == "https://app.exemplo.com"
+        assert denied.status_code == 401
+        assert denied.headers["access-control-allow-origin"] == "https://app.exemplo.com"
+
+    def test_wrong_api_keys_are_rate_limited(self, base_container, workspace):
+        settings = build_settings(workspace, api_key="segredo-forte", rate_limit_per_minute=3)
+        with TestClient(create_app(container=fresh_container(base_container, settings))) as api:
+            codes = [
+                api.post("/triage", json={"text": TECH_TICKET}, headers={"X-API-Key": f"tentativa-{n}"}).status_code
+                for n in range(5)
+            ]
+        assert codes == [401, 401, 401, 429, 429]
 
     def test_rate_limit_returns_429_with_retry_after(self, base_container, workspace):
         settings = build_settings(workspace, rate_limit_per_minute=3)
@@ -362,6 +409,15 @@ class TestDegradedStartup:
                 assert response.json()["error"]["code"] == "service_unavailable"
             assert api.get("/drift").json()["enabled"] is False
             assert api.get("/info").json()["triage"] is None
+
+    def test_technical_ticket_goes_to_human_queue_when_rag_is_down(self, base_container, settings):
+        container = fresh_container(base_container, settings, chat=None)
+        with TestClient(create_app(container=container)) as api:
+            response = api.post("/tickets", json={"text": TECH_TICKET})
+        assert response.status_code == 200
+        body = response.json()
+        assert body["triage"]["is_technical"] is True
+        assert (body["route"], body["chat"]) == ("human_queue", None)
 
     def test_default_factory_builds_container_from_settings(self, workspace):
         with TestClient(create_app(build_settings(workspace))) as api:
