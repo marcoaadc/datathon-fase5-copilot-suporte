@@ -20,8 +20,10 @@ _HOMOGLYPHS = str.maketrans(
     }
 )  # fmt: skip
 # Letras isoladas separadas por espaco ou pontuacao: "i g n o r e", "i.g.n.o.r.e", "i-g-n-o-r-e".
-_SPACED = re.compile(r"(?<![^\W_])(?:[^\W_][\s.\-_*|/\\]{1,3}){3,}[^\W_](?![^\W_])")
-_SEPARATORS = re.compile(r"[\s.\-_*|/\\]+")
+# Um unico separador entre as letras: dois espacos seguidos continuam sendo fronteira de palavra
+# ("i g n o r e  p r e v i o u s" vira "ignore previous", e nao uma palavra so).
+_SPACED = re.compile(r"(?<![^\W_])(?:[^\W_][ .\-_*|/\\]){3,}[^\W_](?![^\W_])")
+_SEPARATORS = re.compile(r"[ .\-_*|/\\]+")
 _WHITESPACE = re.compile(r"\s+")
 
 

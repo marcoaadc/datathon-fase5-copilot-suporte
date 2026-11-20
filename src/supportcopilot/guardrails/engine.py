@@ -21,6 +21,7 @@ from supportcopilot.guardrails import rules
 from supportcopilot.guardrails.normalize import matching_views, normalize_for_matching, strip_accents
 
 MAX_REPEATED_RUN = 40
+LEAK_WINDOW_WORDS = 6
 MIN_UNIQUE_TOKEN_RATIO = 0.2
 FLOOD_MIN_TOKENS = 30
 
@@ -56,7 +57,6 @@ class Verdict:
         return sorted({violation.rule_id for violation in self.violations})
 
 
-_BASE64_BLOB = rules.INPUT_RULES[5].patterns[0]
 _CITATION = re.compile(r"\[(\d{1,2})\]")
 _URL = re.compile(r"\b(?:https?://|www\.)[^\s<>\"')\]]+", re.IGNORECASE)
 _DOMAIN = re.compile(
@@ -109,13 +109,13 @@ class GuardrailEngine:
     def _decoded_payload_violations(self, text: str, already: set[str]) -> list[Violation]:
         """Decodifica blocos base64 e reavalia o conteudo: o disfarce nao esconde a instrucao."""
         found: list[Violation] = []
-        for match in _BASE64_BLOB.finditer(text):
+        for match in rules.BASE64_PATTERN.finditer(text):
             try:
                 decoded = base64.b64decode(match.group(0), validate=True).decode("utf-8")
             except (binascii.Error, UnicodeDecodeError, ValueError):
                 continue
             for violation in self._match_rules(decoded):
-                if violation.rule_id not in already and violation.rule_id != "GR-06":
+                if violation.rule_id not in already and violation.rule_id != rules.ENCODED_PAYLOAD_RULE_ID:
                     already.add(violation.rule_id)
                     found.append(violation)
         return found
@@ -130,9 +130,7 @@ class GuardrailEngine:
     # ------------------------------------------------------------------ contexto (injecao indireta)
     def check_context(self, text: str) -> Verdict:
         """Avalia um trecho do documento: instrucoes embutidas no PDF nao podem chegar ao prompt."""
-        injection_rules = tuple(
-            rule for rule in rules.INPUT_RULES if rule.rule_id in {"GR-01", "GR-03", "GR-04", "GR-05"}
-        )
+        injection_rules = tuple(rule for rule in rules.INPUT_RULES if rule.rule_id in rules.CONTEXT_RULE_IDS)
         return Verdict(self._match_rules(text, injection_rules))
 
     # ------------------------------------------------------------------ saida
@@ -142,7 +140,7 @@ class GuardrailEngine:
         contexts: list[str],
         question: str = "",
         canary: str | None = None,
-        protected_phrases: tuple[str, ...] = (),
+        protected_text: str | None = None,
         require_citation: bool = True,
         check_grounding: bool = True,
     ) -> Verdict:
@@ -150,7 +148,7 @@ class GuardrailEngine:
         normalized = normalize_for_matching(answer)
 
         leaked = canary is not None and canary.casefold() in answer.casefold()
-        leaked = leaked or any(normalize_for_matching(phrase) in normalized for phrase in protected_phrases if phrase)
+        leaked = leaked or (protected_text is not None and shares_passage(answer, protected_text))
         if leaked:
             violations.append(self._output_violation(OUT_PROMPT_LEAK, "prompt_leak"))
 
@@ -169,6 +167,22 @@ class GuardrailEngine:
     @staticmethod
     def _output_violation(rule_id: str, category: str) -> Violation:
         return Violation(rule_id, category, OUTPUT_RULES[rule_id])
+
+
+def _words(text: str) -> list[str]:
+    return re.findall(r"[^\W_]+", normalize_for_matching(text))
+
+
+def shares_passage(answer: str, protected: str, window: int = LEAK_WINDOW_WORDS) -> bool:
+    """True se a resposta reproduz uma sequencia de ``window`` palavras do texto protegido.
+
+    Detecta o vazamento do prompt de sistema mesmo parcial (so o comeco, so uma regra), sem
+    depender de o modelo ter copiado o canario.
+    """
+    protected_words = _words(protected)
+    passages = {" ".join(protected_words[i : i + window]) for i in range(len(protected_words) - window + 1)}
+    answer_words = _words(answer)
+    return any(" ".join(answer_words[i : i + window]) in passages for i in range(len(answer_words) - window + 1))
 
 
 def _canonical(text: str) -> str:
