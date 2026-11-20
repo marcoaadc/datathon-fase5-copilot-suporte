@@ -6,21 +6,21 @@ Como o `/chat` decide o que responder, o que recusar e o que descartar. O racion
 
 ```mermaid
 flowchart TD
-    Q[Pergunta] --> V{Contrato Pydantic<br/>1 a 1000 caracteres}
+    Q[Pergunta] --> V{"Contrato Pydantic<br/>1 a 1000 caracteres"}
     V -- inválida --> E422[HTTP 422]
-    V -- válida --> GI{Guardrails de entrada<br/>GR-01 a GR-09}
-    GI -- violação --> B[status: blocked<br/>sem busca, sem LLM]
+    V -- válida --> GI{"Guardrails de entrada<br/>GR-01 a GR-09"}
+    GI -- violação --> B["status: blocked<br/>sem busca, sem LLM"]
     GI -- ok --> P[Mascaramento de dados pessoais]
     P --> R[Busca híbrida no manual]
-    R --> G{Algum trecho com<br/>similaridade >= 0,35?}
-    G -- não --> NF[status: not_found<br/>sem LLM]
+    R --> G{"Algum trecho com<br/>similaridade de 0,35 ou mais?"}
+    G -- não --> NF["status: not_found<br/>sem LLM"]
     G -- sim --> L[LLM com os trechos]
-    L -- falha do provedor --> X[Trechos do manual<br/>mode: extractive]
+    L -- falha do provedor --> X["Trechos do manual<br/>mode: extractive"]
     L -- sentinela --> NF
-    L --> GO{Guardrails de saída<br/>GO-01 a GO-04}
+    L --> GO{"Guardrails de saída<br/>GO-01 a GO-04"}
     GO -- vazamento ou papel trocado --> B
     GO -- sem citação ou valor inventado --> X
-    GO -- ok --> A[status: answered<br/>mode: llm]
+    GO -- ok --> A["status: answered<br/>mode: llm"]
 ```
 
 O catálogo em vigor também é servido pela API em `GET /info`.

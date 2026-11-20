@@ -16,7 +16,7 @@ Primeira entrega: copilot de suporte de ponta a ponta para o Datathon da Fase 5.
 - **Privacidade.** Mascaramento de CPF, CNPJ, RG, cartão, e-mail, telefone, CEP, data de nascimento, MAC, IP público, senha e nome antes do envio ao LLM; nenhum conteúdo em logs ou erros.
 - **Drift.** Dez features monitoradas, simulador com quatro mecanismos (idioma, mistura de filas, ruído, truncamento), relatórios do Evidently para três cenários e monitor por PSI em janela deslizante na API.
 - **Avaliação.** Suíte de ataques e perguntas legítimas, conjunto cego escrito por revisor independente, avaliação da busca com ablação (densa, lexical, híbrida) e varredura do limiar de relevância.
-- **Engenharia.** Imagem Docker multi-stage não-root com o modelo de embeddings embarcado, `docker-compose` com MLflow, `requirements.txt` com hashes gerado do lock, CI com lint, testes em Python 3.10 a 3.12 e teste de fumaça do container sem rede.
+- **Engenharia.** Imagem Docker multi-stage não-root com o modelo de embeddings embarcado, `docker-compose` com MLflow, `requirements.txt` com hashes gerado do lock, workflow de CI com lint, testes em Python 3.10 a 3.12 e teste de fumaça do container sem rede (ainda não executado: o Actions da conta está bloqueado; a receita da imagem foi reproduzida em Linux com Python 3.12).
 - **Documentação.** README com arquitetura de nuvem e LGPD, seis ADRs, referência de guardrails, guia de drift, model card e runbook.
 
 ### Decisões registradas durante o desenvolvimento

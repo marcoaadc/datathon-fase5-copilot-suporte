@@ -12,7 +12,7 @@ Motor de um **Copilot de Suporte** de ponta a ponta. O sistema recebe um chamado
 | **RAG** | LangChain + FAISS + BM25 sobre PDF; seção certa no top-4 em 98,3% de 60 perguntas |
 | **Guardrails** | 9 regras de entrada, 4 de saída e quarentena de trechos do PDF; 74,5% de ataques inéditos barrados em teste cego, 0 falso positivo em 70 perguntas legítimas |
 | **Drift** | Relatórios do Evidently: 0/10 colunas com drift no controle, 9/10 no cenário severo, com a acurácia caindo de 0,636 para 0,471 |
-| **Engenharia** | 570+ testes, 98% de cobertura, imagem Docker não-root, CI com build e teste de fumaça |
+| **Engenharia** | 580 testes, 98% de cobertura, imagem Docker não-root, receita da imagem verificada em Linux |
 
 ## Sumário
 
@@ -142,7 +142,7 @@ flowchart LR
     PDF[["Manuais em PDF"]] -.->|indexados na subida| R
     MOD[["Modelo + perfil de referência"]] -.-> T
     MOD -.-> M
-    API -.->|/metrics| PROM[("Prometheus")]
+    API -.->|"/metrics"| PROM[("Prometheus")]
 
     subgraph OFF["Fora da API (pipelines)"]
         direction TB
@@ -176,7 +176,7 @@ docker run --rm -p 8000:8000 support-copilot:latest
 # Swagger: http://localhost:8000/docs
 ```
 
-A imagem já contém o modelo de triagem, o manual em PDF e o modelo de embeddings: sobe sem rede e sem nenhuma chave. Nesse modo o `/chat` responde com os trechos do manual. Para a resposta gerada pelo LLM, passe a chave:
+A imagem já contém o modelo de triagem, o manual em PDF e o modelo de embeddings: sobe sem rede e sem nenhuma chave. A subida leva cerca de 15 segundos (carga do modelo de embeddings e indexação do manual); `GET /ready` responde 200 quando termina. Nesse modo o `/chat` responde com os trechos do manual. Para a resposta gerada pelo LLM, passe a chave:
 
 ```bash
 docker run --rm -p 8000:8000 -e OPENAI_API_KEY=sk-... support-copilot:latest
@@ -428,12 +428,12 @@ Três pontos de controle, todos em código determinístico. Nenhum depende de o 
 ```mermaid
 flowchart LR
     Q[Pergunta] --> A{"Entrada<br/>GR-01 a GR-09"}
-    A -- viola --> B[Bloqueada<br/>sem busca, sem LLM]
-    A -- ok --> C[Mascaramento<br/>de PII] --> D{"Trecho relevante<br/>no manual?"}
-    D -- não --> E[Não encontrado<br/>sem LLM]
+    A -- viola --> B["Bloqueada<br/>sem busca, sem LLM"]
+    A -- ok --> C["Mascaramento<br/>de PII"] --> D{"Trecho relevante<br/>no manual?"}
+    D -- não --> E["Não encontrado<br/>sem LLM"]
     D -- sim --> F[LLM] --> G{"Saída<br/>GO-01 a GO-04"}
-    G -- vazamento / papel trocado --> B
-    G -- sem citação / valor inventado --> H[Trechos do manual]
+    G -- "vazamento ou papel trocado" --> B
+    G -- "sem citação ou valor inventado" --> H[Trechos do manual]
     G -- ok --> I[Resposta com citações]
     PDF[[Chunks do PDF]] --> K{"Contexto<br/>injeção indireta"}
     K -- instrução embutida --> L[Quarentena]
@@ -623,7 +623,7 @@ flowchart TB
     JOB --> S3
     MLF --- RDS
     MLF --- S3
-    ECS -.->|logs JSON e /metrics| CW["CloudWatch + Managed Prometheus<br/>Grafana, alarmes"]
+    ECS -.->|"logs JSON e /metrics"| CW["CloudWatch + Managed Prometheus<br/>Grafana, alarmes"]
     CW -.->|drift crítico, LLM degradado, 5xx| SNS["SNS -> plantão"]
     GH["GitHub Actions<br/>OIDC, sem chave de longa duração"] -->|build, teste, push| ECR
     GH -->|deploy gradual| ECS
@@ -769,7 +769,7 @@ O CPF e o e-mail não aparecem em nenhum campo da resposta, nem no log, nem na c
 O que este repositório **não** demonstra:
 
 - **Chamada real à OpenAI ou ao Gemini.** O desenvolvimento foi feito sem chave de API. A integração foi exercitada contra um servidor local compatível com a API da OpenAI (HTTP real, cliente oficial) e com um modelo roteirizado; a qualidade da resposta gerada por um modelo real não foi medida, e os nomes de modelo padrão não foram testados contra os provedores. Use `make check-llm` ao configurar a chave. O cliente do Gemini é construído e testado apenas até a criação do objeto.
-- **Build da imagem na máquina de desenvolvimento.** O ambiente local não tem Docker. O `Dockerfile` é construído e testado pelo workflow de CI (build, container sem rede, usuário não-root, teste de fumaça dos endpoints). O estado dessa execução está na aba *Actions* do repositório.
+- **`docker build` de fato.** A máquina de desenvolvimento não tem Docker, e o GitHub Actions da conta está bloqueado por uma pendência de cobrança (os jobs do workflow terminam em segundos sem iniciar, com a mensagem "account is locked due to a billing issue"). Ou seja: **a imagem ainda não foi construída por ninguém**. O que foi verificado é a receita do `Dockerfile`, reproduzida passo a passo em Linux (Ubuntu, Python 3.12.16, a mesma versão da imagem): `pip install --require-hashes -r requirements.txt`, download do modelo de embeddings, cópia apenas dos arquivos que o `.dockerignore` deixa passar, subida do `uvicorn` como usuário não-root, com os diretórios da aplicação somente leitura e o acesso ao hub de modelos desligado, e as mesmas requisições do teste de fumaça do CI (`/ready`, `/triage`, `/chat`, bloqueio e `/info`), todos com sucesso. Também foi conferido no lock que toda dependência tem pacote binário para Python 3.12 em x86_64 e em ARM. Não foram exercitados: a sintaxe do `Dockerfile` pelo próprio Docker, o `HEALTHCHECK` e o `docker compose`. O workflow de CI faz exatamente essa verificação e roda sozinho quando o Actions for liberado.
 - **Triagem em português.** O dataset público é em inglês e alemão; o modelo foi treinado em inglês. O desempenho em português não foi medido e não deve ser presumido: um chamado em português pode até cair na fila certa por termos compartilhados ("internet", "LED", "router"), às vezes com confiança alta, mas quase todas as suas palavras estão fora do vocabulário do modelo. É exatamente o caso que o monitor de drift (`oov_rate`) existe para acusar. O RAG, por outro lado, é multilíngue: o manual está em português e perguntas em português ou inglês funcionam.
 - **O dataset é sintético.** Os chamados foram gerados por LLM. Os rótulos de fila se sobrepõem, o que limita a acurácia de qualquer modelo; em dados reais de uma operação, os números seriam outros.
 - **Drift de conceito.** O monitor vê mudança na entrada e na decisão. Se a regra de negócio mudar (o mesmo texto passa a pertencer a outra fila), só uma amostra rotulada revela.
@@ -800,7 +800,7 @@ make eval-rag        # hit@k, MRR e varredura do limiar de relevância
 
 Os testes não dependem de rede nem de chave: o dataset é sintético e o LLM é substituído. Os marcados como `slow` usam MLflow, Evidently e o modelo de embeddings de verdade.
 
-O CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) roda três jobs: lint e consistência (lock, requirements, guardrails, PDF do manual), testes em Python 3.10, 3.11 e 3.12 com cobertura mínima de 90%, e build da imagem Docker com teste de fumaça em um container sem acesso à rede.
+O CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) define três jobs: lint e consistência (lock, requirements, guardrails, PDF do manual), testes em Python 3.10, 3.11 e 3.12 com cobertura mínima de 90%, e build da imagem Docker com teste de fumaça em um container sem acesso à rede. **Ele ainda não executou**: o Actions da conta está bloqueado por cobrança (seção 11). Os números desta página vêm da execução local: 580 testes, 98% de cobertura, em Windows com Python 3.10; a subida da API e o teste de fumaça também foram reproduzidos em Linux com Python 3.10 e 3.12.
 
 ## 13. Estrutura do repositório
 

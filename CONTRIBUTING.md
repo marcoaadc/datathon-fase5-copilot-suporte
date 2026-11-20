@@ -15,7 +15,7 @@ O repositório já traz o modelo de triagem, o manual e os relatórios. Para ref
 ## Fluxo de trabalho
 
 1. Crie uma branch a partir de `main` (`feat/...`, `fix/...`, `docs/...`).
-2. Rode `make lint test` antes de abrir o PR. O CI executa lint, testes em Python 3.10 a 3.12 e o build da imagem Docker com teste de fumaça.
+2. Rode `make lint test` antes de abrir o PR. O CI está definido para executar lint, testes em Python 3.10 a 3.12 e o build da imagem Docker com teste de fumaça (enquanto o Actions da conta estiver bloqueado, rode `make lint test` localmente).
 3. Mensagens de commit seguem [Conventional Commits](https://www.conventionalcommits.org/): `feat:`, `fix:`, `docs:`, `test:`, `ci:`, `build:`, `chore:`, com escopo quando ajuda (`feat(guardrails): ...`).
 4. Registre mudanças relevantes em `CHANGELOG.md`, em uma seção *Não lançado* no topo (crie-a se não existir).
 
