@@ -33,6 +33,11 @@ def numeric_profile(values: Iterable[float], bins: int = 10) -> dict[str, Any]:
     if array.size == 0:
         raise ValueError("perfil numerico exige ao menos um valor finito")
     edges = np.unique(np.quantile(array, np.linspace(0, 1, bins + 1)[1:-1]))
+    if len(edges) < bins - 1:
+        # Feature concentrada em poucos valores (ex.: fracao de caracteres nao ASCII, quase sempre 0):
+        # os quantis colapsam. Um limite logo acima de cada valor separa "igual ao valor tipico" de
+        # "acima dele"; sem isso, um salto de 0 para 0,05 cairia na mesma faixa e passaria batido.
+        edges = np.unique(np.concatenate([edges, np.nextafter(edges, np.inf)]))
     return {
         "kind": "numerical",
         "edges": [float(edge) for edge in edges],

@@ -5,7 +5,7 @@ descritores do texto e a saida do modelo:
 
 * forma do texto: tamanho, numero de palavras, tamanho medio de palavra, fracao de maiusculas,
   de digitos e de caracteres fora do ASCII;
-* ``oov_rate``: fracao das palavras do chamado que o vocabulario do modelo nao conhece. E o sinal
+* ``oov_rate``: fracao das palavras do chamado que estao fora do vocabulario do modelo. E o sinal
   mais direto de que a producao esta falando de algo (ou em um idioma) que o treino nao cobriu;
 * saida do modelo: fila prevista, confianca e probabilidade de ser tecnico. Queda de confianca e
   mudanca na mistura de filas sao o efeito do drift sobre a decisao.
@@ -43,7 +43,12 @@ _WORD = re.compile(r"\w+", re.UNICODE)
 
 
 def model_vocabulary(pipeline: Pipeline) -> tuple[frozenset[str], Any]:
-    """Vocabulario de unigramas do TF-IDF de palavras e o pre-processador que o gerou."""
+    """Unigramas do vocabulario do TF-IDF de palavras e o analisador que os gerou.
+
+    Uma palavra fora desse vocabulario nao contribui em nada para a decisao do modelo (nunca vista,
+    rara demais ou comum demais no treino). A referencia tambem tem uma taxa de fundo dessas
+    palavras; o que o monitor acompanha e o desvio em relacao a ela.
+    """
     vectorizer = dict(pipeline.named_steps["features"].transformer_list)[WORD_STEP]
     unigrams = frozenset(term for term in vectorizer.vocabulary_ if " " not in term)
     return unigrams, vectorizer.build_analyzer()
