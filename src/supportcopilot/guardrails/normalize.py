@@ -10,7 +10,7 @@ from __future__ import annotations
 import re
 import unicodedata
 
-_INVISIBLE = re.compile(r"[\u0000-\u0008\u000b-\u001f\u007f-\u009f­​-‏‪-‮⁠-⁤﻿]")
+_INVISIBLE = re.compile(r"[\u0000-\u0008\u000b-\u001f\u007f-\u009f\u00ad\u200b-\u200f\u202a-\u202e\u2060-\u2064\ufeff]")
 _LEET = str.maketrans({"0": "o", "1": "i", "3": "e", "4": "a", "5": "s", "7": "t", "@": "a", "$": "s", "!": "i"})
 # Letras cirilicas e gregas visualmente identicas as latinas (ataque de homoglifos).
 _HOMOGLYPHS = str.maketrans(

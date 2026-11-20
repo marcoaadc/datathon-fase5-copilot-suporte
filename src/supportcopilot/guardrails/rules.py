@@ -54,6 +54,12 @@ _STRONG_TARGET = (
 _WEAK_TARGET = (
     r"(?:regras?|rules?|restric\w*|restrict\w*|filtros?|filters?|limitac\w*|limitations?|polic\w*|politic\w*)"
 )
+# "regras de firewall", "filtro de MAC", "politica de devolucao": sao do produto, nao do assistente.
+_NOT_DEVICE_RULES = (
+    r"(?!\s+(?:d[eoa]s?|of|for|para)\s+(?:(?:o|a|the)\s+)?(?:firewall|redirecionamento|portas?|port|nat|qos|controle"
+    r"|roteamento|routing|rede|network|acesso|access|mac|conteudo parental|horario|devoluc\w+|return|troca|garantia"
+    r"|warranty|uso da rede|senha|password))"
+)
 _OWNER_BEFORE = r"(?:(?:as |os )?(?:su|tu)as?|(?:os )?(?:s|t)eus?|your|its own|these|essas|estas|esses|estes)"
 _QUALIFIER_AFTER = (
     r"(?:anterior\w*|acima|previous|above|prior|earlier|d[eo] sistema|d[eo] seguranca|safety|d[eo] uso|d[eo] conteudo"
@@ -67,7 +73,7 @@ _NOT_USE = (
     r"(?:nao (?:use|utilize|consulte|considere|olhe|leia|se baseie|se limite)|sem (?:usar|utilizar|consultar|considerar"
     r"|olhar|se basear|se limitar)|do not (?:use|consult|rely|limit)|don'?t (?:use|consult|rely|limit)"
     r"|without (?:using|consulting|relying)|independente(?:mente)? d[oe]|regardless of|instead of(?: using)?"
-    r"|em vez d[oe](?: usar)?|ao inves d[oe](?: usar)?|not (?:from |in |using )?the)"
+    r"|em vez d[oe](?: usar)?|ao inves d[oe](?: usar)?)"
 )
 # Quem recebe a ordem e o assistente (e nao o roteador).
 _ASSISTANT = (
@@ -136,8 +142,8 @@ INPUT_RULES: tuple[Rule, ...] = (
         'Tentativa de anular as instrucoes do sistema ("ignore as instrucoes anteriores").',
         _compile(
             rf"\b{_IGNORE}\b.{{0,50}}\b{_STRONG_TARGET}",
-            rf"\b{_IGNORE}\b.{{0,40}}\b{_WEAK_TARGET}\b.{{0,25}}\b{_QUALIFIER_AFTER}",
-            rf"\b{_IGNORE}\b.{{0,25}}\b{_OWNER_BEFORE}\b.{{0,15}}\b{_WEAK_TARGET}",
+            rf"\b{_IGNORE}\b.{{0,40}}\b{_WEAK_TARGET}\b{_NOT_DEVICE_RULES}.{{0,25}}\b{_QUALIFIER_AFTER}",
+            rf"\b{_IGNORE}\b.{{0,25}}\b{_OWNER_BEFORE}\b.{{0,15}}\b{_WEAK_TARGET}\b{_NOT_DEVICE_RULES}",
             rf"(?:^|[.!?:;\n]\s*)(?:por favor,?\s*|please,?\s*)?{_IGNORE}\s+(?:todas as |todos os |all (?:of )?(?:the |your )?"
             rf"|as |os |the )?{_WEAK_TARGET}\s*(?:$|[.!?,;\n]|e\b|and\b)",
             rf"\b{_STRONG_TARGET}\b.{{0,40}}\b(?:nao (?:valem|se aplicam|importam)(?: mais)?|no longer appl\w+"
@@ -155,8 +161,12 @@ INPUT_RULES: tuple[Rule, ...] = (
         "context_evasion",
         "Tentativa de fazer a IA ignorar o PDF/manual e responder com conhecimento proprio.",
         _compile(
-            rf"\b{_IGNORE}\b.{{0,40}}\b{_KNOWLEDGE_BASE}\b",
-            rf"\b{_NOT_USE}\b.{{0,30}}\b{_KNOWLEDGE_BASE}\b",
+            # A base de conhecimento precisa ser o objeto do verbo (ate tres palavras depois dele):
+            # "esqueca o PDF" bloqueia; "o roteador esquece a senha toda vez, o manual diz algo?" nao.
+            rf"\b{_IGNORE}\b(?:\s+[^\s.,;:!?]+){{0,3}}?\s+{_KNOWLEDGE_BASE}\b",
+            rf"\b{_NOT_USE}\b(?:\s+[^\s.,;:!?]+){{0,3}}?\s+{_KNOWLEDGE_BASE}\b",
+            r"(?:^|[.!?,;:\n]\s*)(?:please\s+)?(?:answer|respond|reply)\b.{0,40}\bnot (?:from |using |in |with )?the\b.{0,10}"
+            rf"\b{_KNOWLEDGE_BASE}\b",
             r"\b(?:use|usa|usando|utilize|utilizando|com base n[oa]|baseado n[oa]|a partir d[oa]|com (?:o|a)|using|based on"
             r"|from|with)\b.{0,25}\b(?:(?:s|t)eu|(?:s|t)ua|your|proprio|propria|own)\b.{0,25}"
             r"\b(?:conhecimento|knowledge|treinamento|training|memoria|memory|dados de treino|training data)\b",
@@ -183,8 +193,10 @@ INPUT_RULES: tuple[Rule, ...] = (
             r"\b(?:interpret(?:a|e|ar)|play(?:ing)?|brincar de|vamos brincar)\b.{0,40}\b(?:uma? ia|an? ai|personagem|character)\b",
             r"\b(?:ia|ai|assistente|assistant|persona\w*|personagem)\b.{0,40}\b(?:que nao segue|sem se preocupar com"
             r"|that (?:does not|doesn'?t) follow|with no regard for|que ignora)\b.{0,30}\b(?:politic\w+|polic\w+|regras|rules)\b",
-            r"\b(?:a partir de agora|de agora em diante|from now on|starting now|henceforth)\b.{0,40}\b(?:voce|vc|you)\b"
-            r".{0,30}\b(?:e|es|sera|vai|deve|pode|are|will|must|shall|should|can)\b",
+            # "A partir de agora voce e/sera/deve...": o sujeito "voce" vem logo depois (ate duas palavras)
+            # e o verbo e de identidade ou obrigacao. "From now on, how can I ... so you can help" nao casa.
+            r"\b(?:a partir de agora|de agora em diante|from now on|starting now|henceforth)[,:]?(?:\s+[^\s.,;:!?]+){0,2}?"
+            r"\s+(?:voce|vc|you)\s+(?:nao\s+|not\s+)?(?:e|es|sera|vai|deve|tem|are|will|must|shall|should|have)\b",
             r"\b(?:a partir de agora|de agora em diante|from now on|starting now|henceforth)[,:]?\s+"
             r"(?:responda|answer|respond|aja|act|ignore|fale|speak|reply|behave|comporte-se)\b",
             r"\b(?:aja|atue|comporte-se|finja|simule ser|faca de conta|pretend|roleplay|role-play|impersonate)\b"
@@ -208,7 +220,8 @@ INPUT_RULES: tuple[Rule, ...] = (
         "prompt_extraction",
         "Tentativa de extrair o prompt de sistema ou as instrucoes internas.",
         _compile(
-            rf"\b{_REVEAL}\b.{{0,50}}\b{_PROMPT_TARGET}",
+            # Pedido e alvo na mesma frase: "What is your return policy? Your rules say..." nao casa.
+            rf"\b{_REVEAL}\b[^.?!\n]{{0,50}}\b{_PROMPT_TARGET}{_NOT_DEVICE_RULES}",
             rf"\b{_PROMPT_TARGET}\b.{{0,30}}\b(?:palavra por palavra|na integra|verbatim|word for word|literalmente|completo"
             r"|inteiro|in full)\b",
         ),
@@ -222,7 +235,11 @@ INPUT_RULES: tuple[Rule, ...] = (
             r"|trecho)\b[^>]*>",
             r"\[/?\s*(?:INST|SYS|SYSTEM)\s*\]",
             r"<\|[^|>]{1,40}\|>",
-            r"^\s*(?:system|assistant|sistema|assistente|developer)\s*:",
+            # Linha que imita uma mensagem de papel E fala com o assistente. So o rotulo nao basta:
+            # "Sistema: Windows 11" e uma linha normal de um chamado.
+            r"^\s*(?:system|assistant|sistema|assistente|developer)\s*:[^\n]{0,120}?\b(?:voc[eê]|vc|you|ignor\w+|obede\w+"
+            r"|obey|instru\w+|regras|rules|prompt|respond\w+|answer|assistente|assistant|ordens|orders|a partir de agora"
+            r"|from now on)\b",
             r"#{2,}\s*(?:system|sistema|instruc\w+|instruction\w*|new task|nova tarefa)\b",
             r"\bBEGIN (?:SYSTEM|INSTRUCTIONS?|PROMPT)\b|\bEND (?:OF )?(?:CONTEXT|SYSTEM|INSTRUCTIONS?|PROMPT)\b",
             flags=re.IGNORECASE | re.MULTILINE,
@@ -234,8 +251,11 @@ INPUT_RULES: tuple[Rule, ...] = (
         "encoded_payload",
         "Bloco codificado (base64/hex) longo, usado para esconder instrucoes do filtro.",
         _compile(
-            r"(?<![A-Za-z0-9+/=])(?:[A-Za-z0-9+/]{4}){12,}(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?(?![A-Za-z0-9+/=])",
-            r"(?<![0-9A-Fa-f])(?:[0-9A-Fa-f]{2}[\s:]?){32,}(?![0-9A-Fa-f])",
+            # Excecao: exatamente 64 caracteres hexadecimais e o formato de uma chave WPA, nao um payload.
+            r"(?<![A-Za-z0-9+/=])(?![0-9A-Fa-f]{64}(?![A-Za-z0-9+/=]))(?:[A-Za-z0-9+/]{4}){12,}"
+            r"(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?(?![A-Za-z0-9+/=])",
+            # Acima de 40 bytes: uma chave WPA em hexadecimal (64 caracteres) nao e um payload.
+            r"(?<![0-9A-Fa-f])(?:[0-9A-Fa-f]{2}[\s:]?){40,}(?![0-9A-Fa-f])",
             r"(?:\\x[0-9A-Fa-f]{2}){8,}|(?:\\u[0-9A-Fa-f]{4}){8,}|(?:%[0-9A-Fa-f]{2}){12,}",
             flags=0,
         ),
@@ -258,6 +278,10 @@ INPUT_RULES: tuple[Rule, ...] = (
 
 ENCODED_PAYLOAD_RULE_ID = "GR-06"
 BASE64_PATTERN = next(rule for rule in INPUT_RULES if rule.rule_id == ENCODED_PAYLOAD_RULE_ID).patterns[0]
+# Para decodificar e reavaliar: blocos a partir de 16 caracteres (12 bytes), com padding opcional.
+BASE64_DECODE_PATTERN = re.compile(
+    r"(?<![A-Za-z0-9+/=])(?:[A-Za-z0-9+/]{4}){4,}(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?(?![A-Za-z0-9+/=])"
+)
 # Regras que tambem valem para o conteudo dos documentos (injecao indireta).
 CONTEXT_RULE_IDS = frozenset({"GR-01", "GR-03", "GR-04", "GR-05"})
 

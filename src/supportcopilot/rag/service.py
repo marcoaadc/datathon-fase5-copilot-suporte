@@ -177,7 +177,7 @@ class ChatService:
             [chunk.text for chunk in context],
             question=safe_question,
             canary=self._canary,
-            protected_text=prompts.system_prompt(self._canary),
+            protected_text=prompts.protected_rules(self._canary),
             check_grounding=self._grounding_check,
         )
         timings["guardrails_output"] = (time.perf_counter() - started) * 1000

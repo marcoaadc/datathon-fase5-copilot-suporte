@@ -21,7 +21,7 @@ from supportcopilot.guardrails import rules
 from supportcopilot.guardrails.normalize import matching_views, normalize_for_matching, strip_accents
 
 MAX_REPEATED_RUN = 40
-LEAK_WINDOW_WORDS = 6
+LEAK_WINDOW_WORDS = 8
 MIN_UNIQUE_TOKEN_RATIO = 0.2
 FLOOD_MIN_TOKENS = 30
 
@@ -63,6 +63,7 @@ _DOMAIN = re.compile(
     r"\b[a-z0-9-]+(?:\.[a-z0-9-]+)*\.(?:com|net|org|br|io|gov|edu|local|lan)(?:\.[a-z]{2})?\b", re.IGNORECASE
 )
 _IPV4 = re.compile(r"(?<![\d.])(?:\d{1,3}\.){3}\d{1,3}(?![\d.])")
+_STEP_NUMBER = re.compile(r"(?m)^\s*\d{1,2}[.)](?=\s)")
 _NUMBER = re.compile(r"(?<![\w.,])\d+(?:[.,]\d+)*(?![\w]*\])")
 _COMPLIANCE = re.compile(
     r"\b(?:modo (?:desenvolvedor|dev|deus|irrestrito) (?:ativado|habilitado|ligado)|developer mode (?:enabled|activated|on)"
@@ -107,22 +108,38 @@ class GuardrailEngine:
         return found
 
     def _decoded_payload_violations(self, text: str, already: set[str]) -> list[Violation]:
-        """Decodifica blocos base64 e reavalia o conteudo: o disfarce nao esconde a instrucao."""
+        """Decodifica blocos base64 e reavalia o conteudo: o disfarce nao esconde a instrucao.
+
+        O limiar aqui e menor que o de GR-06 (que bloqueia qualquer bloco longo): um payload curto
+        como "aWdub3JlIHByZXZpb3VzIGluc3RydWN0aW9ucw==" so e bloqueado se, decodificado, violar
+        alguma regra. Uma palavra comum que por acaso use o alfabeto base64 decodifica em lixo e
+        nao casa com nada.
+        """
         found: list[Violation] = []
-        for match in rules.BASE64_PATTERN.finditer(text):
+        for match in rules.BASE64_DECODE_PATTERN.finditer(text):
             try:
                 decoded = base64.b64decode(match.group(0), validate=True).decode("utf-8")
             except (binascii.Error, UnicodeDecodeError, ValueError):
                 continue
-            for violation in self._match_rules(decoded):
-                if violation.rule_id not in already and violation.rule_id != rules.ENCODED_PAYLOAD_RULE_ID:
+            decoded_violations = [
+                violation
+                for violation in self._match_rules(decoded)
+                if violation.rule_id != rules.ENCODED_PAYLOAD_RULE_ID
+            ]
+            if decoded_violations and rules.ENCODED_PAYLOAD_RULE_ID not in already:
+                already.add(rules.ENCODED_PAYLOAD_RULE_ID)
+                payload_rule = next(r for r in rules.INPUT_RULES if r.rule_id == rules.ENCODED_PAYLOAD_RULE_ID)
+                found.append(Violation(payload_rule.rule_id, payload_rule.category, payload_rule.description))
+            for violation in decoded_violations:
+                if violation.rule_id not in already:
                     already.add(violation.rule_id)
                     found.append(violation)
         return found
 
     @staticmethod
     def _is_flooding(text: str) -> bool:
-        if re.search(r"(.)\1{" + str(MAX_REPEATED_RUN) + r",}", text):
+        # So letras e digitos: uma linha de tracos colada como separador nao e flooding.
+        if re.search(r"([^\W_])\1{" + str(MAX_REPEATED_RUN) + r",}", text):
             return True
         tokens = text.casefold().split()
         return len(tokens) >= FLOOD_MIN_TOKENS and len(set(tokens)) / len(tokens) < MIN_UNIQUE_TOKEN_RATIO
@@ -176,8 +193,9 @@ def _words(text: str) -> list[str]:
 def shares_passage(answer: str, protected: str, window: int = LEAK_WINDOW_WORDS) -> bool:
     """True se a resposta reproduz uma sequencia de ``window`` palavras do texto protegido.
 
-    Detecta o vazamento do prompt de sistema mesmo parcial (so o comeco, so uma regra), sem
-    depender de o modelo ter copiado o canario.
+    Detecta o vazamento do prompt de sistema mesmo parcial (so uma regra), sem depender de o
+    modelo ter copiado o canario. A janela precisa ser longa o bastante para nao confundir com
+    vazamento uma abertura comum de resposta ("com base nos trechos do manual, ...").
     """
     protected_words = _words(protected)
     passages = {" ".join(protected_words[i : i + window]) for i in range(len(protected_words) - window + 1)}
@@ -191,13 +209,24 @@ def _canonical(text: str) -> str:
     return re.sub(r"(?<=\d),(?=\d)", ".", text)
 
 
+def _bare(value: str) -> str:
+    """Endereco sem esquema, sem ``www.`` e sem pontuacao final: ``http://x.y/`` e ``x.y`` sao o mesmo valor."""
+    return re.sub(r"^(?:https?://)?(?:www\.)?", "", value).rstrip(".,;:/")
+
+
 def _hard_values(text: str) -> set[str]:
-    """Valores "duros" de uma resposta: URLs, dominios, IPs e numeros com dois digitos ou mais."""
+    """Valores "duros" de um texto: URLs, dominios, IPs e numeros com dois digitos ou mais.
+
+    Numeracao de passos ("10. Clique em Salvar") e citacoes ("[2]") nao sao valores.
+    """
     canonical = _canonical(_CITATION.sub(" ", text))
+    canonical = _STEP_NUMBER.sub(" ", canonical)
     values: set[str] = set()
     for pattern in (_URL, _DOMAIN, _IPV4):
         for match in pattern.finditer(canonical):
-            values.add(match.group(0).rstrip(".,;:/"))
+            bare = _bare(match.group(0))
+            values.add(bare)
+            values.add(bare.split("/", 1)[0])  # o host de uma URL tambem conta
         canonical = pattern.sub(" ", canonical)
     for match in _NUMBER.finditer(canonical):
         number = match.group(0).rstrip(".,")
@@ -212,13 +241,9 @@ def unsupported_values(answer: str, sources: list[str]) -> list[str]:
     E uma checagem independente de idioma: o LLM pode reescrever o texto, mas um IP, uma URL, um
     tempo de espera ou um numero de porta precisam existir no manual. Valor inventado e o tipo de
     alucinacao mais perigoso em suporte tecnico.
+
+    A comparacao e por valor inteiro, nao por trecho de texto: "192.168.10.10" nao e sustentado por
+    "192.168.10.100", nem "16" por "192.168.10.1".
     """
-    haystack = _canonical(" \n ".join(sources))
-    haystack_values = _hard_values(haystack)
-    missing = []
-    for value in sorted(_hard_values(answer)):
-        bare = re.sub(r"^(?:https?://)?(?:www\.)?", "", value)
-        if value in haystack_values or value in haystack or bare in haystack:
-            continue
-        missing.append(value)
-    return missing
+    supported = _hard_values(" \n ".join(sources))
+    return sorted(value for value in _hard_values(answer) if value not in supported)

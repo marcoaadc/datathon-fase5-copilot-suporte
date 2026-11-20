@@ -22,6 +22,7 @@ from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
 from supportcopilot.rag.index import RetrievedChunk
 
 NOT_FOUND_SENTINEL = "[[SEM_RESPOSTA_NO_MANUAL]]"
+RULES_MARKER = "Regras ("
 
 SYSTEM_TEMPLATE = """Voce e o Copilot de Suporte, um assistente tecnico que responde duvidas \
 exclusivamente com base nos trechos do manual fornecidos.
@@ -73,6 +74,16 @@ def format_context(chunks: list[RetrievedChunk]) -> str:
 
 def system_prompt(canary: str) -> str:
     return SYSTEM_TEMPLATE.format(sentinel=NOT_FOUND_SENTINEL, canary=canary)
+
+
+def protected_rules(canary: str) -> str:
+    """Parte do prompt de sistema que nao pode aparecer em uma resposta: o bloco de regras.
+
+    A frase de abertura fica de fora de proposito: "com base nos trechos do manual" e tambem o
+    jeito natural de comecar uma resposta, e trata-la como segredo bloquearia respostas legitimas.
+    """
+    prompt = system_prompt(canary)
+    return prompt[prompt.index(RULES_MARKER) :]
 
 
 def build_messages(question: str, chunks: list[RetrievedChunk], canary: str) -> list[BaseMessage]:
