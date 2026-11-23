@@ -5,7 +5,8 @@ Para cada cenario (controle, moderado, severo):
 1. monta uma janela de producao simulada a partir de chamados que o modelo nunca viu;
 2. extrai as features monitoradas e aplica o modelo;
 3. gera ``reports/drift/drift_<cenario>.html`` com o Evidently;
-4. resume o veredito, o PSI do detector proprio e a qualidade do modelo em ``summary.json``/``summary.md``.
+4. resume o veredito, o PSI do detector proprio e a qualidade do modelo em ``summary.json``/``summary.md``;
+5. reparte a degradacao do cenario severo entre os mecanismos por valores de Shapley (``attribution.json``).
 
 Com ``COPILOT_MLFLOW_TRACKING_URI`` definido, cada cenario vira um run no experimento de drift.
 """
@@ -19,8 +20,9 @@ from typing import Any
 
 from supportcopilot.config.settings import Settings, get_settings
 from supportcopilot.data.ingest import TEXT, load_partition
+from supportcopilot.drift import attribution
 from supportcopilot.drift import report as drift_report
-from supportcopilot.drift.simulate import MECHANISM, SCENARIOS, Scenario, simulate
+from supportcopilot.drift.simulate import MECHANISM, SCENARIOS, Scenario, get_scenario, simulate
 from supportcopilot.observability.logs import configure_logging
 from supportcopilot.observability.tracking import Tracker
 from supportcopilot.triage.registry import load_model, write_json
@@ -71,7 +73,13 @@ def _markdown(summary: dict[str, Any]) -> str:
     return "\n".join(lines) + "\n"
 
 
-def run(settings: Settings, scenarios: tuple[Scenario, ...] = SCENARIOS, window_size: int | None = None) -> dict:
+def run(
+    settings: Settings,
+    scenarios: tuple[Scenario, ...] = SCENARIOS,
+    window_size: int | None = None,
+    attribution_seeds: tuple[int, ...] | None = None,
+    with_attribution: bool = True,
+) -> dict:
     loaded = load_model(settings.triage_dir)
     technical = tuple(settings.technical_queues)
     reference_raw = load_partition(settings, "test")
@@ -145,8 +153,37 @@ def run(settings: Settings, scenarios: tuple[Scenario, ...] = SCENARIOS, window_
             )
             tracker.log_artifact(html, "evidently")
 
+    markdown = _markdown(summary)
+    if with_attribution:
+        seeds = attribution_seeds or (settings.seed, settings.seed + 1, settings.seed + 2)
+        report = attribution.attribute(
+            loaded.pipeline,
+            reference,
+            production,
+            drift_pool,
+            get_scenario("severo"),
+            technical,
+            settings.psi_warning,
+            seeds=seeds,
+            window_size=window_size,
+        )
+        summary["attribution"] = report
+        write_json(out_dir / "attribution.json", report)
+        markdown += "\n" + attribution.to_markdown(report)
+        with tracker.run("drift-atribuicao", tags={"stage": "drift", "scenario": "severo"}):
+            tracker.log_params({"seeds": json.dumps(list(seeds)), "rows": report["rows_per_window"]})
+            tracker.log_metrics(
+                {
+                    f"shapley__{metric}__{mechanism}": value
+                    for metric, item in report["metrics"].items()
+                    for mechanism, value in item["shapley"].items()
+                }
+                | {f"total_change__{metric}": item["total_change"] for metric, item in report["metrics"].items()}
+            )
+            tracker.log_dict(report, "attribution.json")
+
     write_json(out_dir / "summary.json", summary)
-    (out_dir / "summary.md").write_text(_markdown(summary), encoding="utf-8", newline="\n")
+    (out_dir / "summary.md").write_text(markdown, encoding="utf-8", newline="\n")
     return summary
 
 
@@ -159,17 +196,21 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--scenario", choices=[s.name for s in SCENARIOS], action="append", help="padrao: todos")
     parser.add_argument("--window-size", type=int, default=None, help="chamados por janela (padrao: a particao toda)")
+    parser.add_argument("--no-attribution", action="store_true", help="pula a atribuicao causal por Shapley")
     args = parser.parse_args(argv)
     settings = get_settings()
     configure_logging(settings.log_level, settings.log_json)
     chosen = tuple(s for s in SCENARIOS if not args.scenario or s.name in args.scenario)
-    summary = run(settings, chosen, args.window_size)
+    summary = run(settings, chosen, args.window_size, with_attribution=not args.no_attribution)
     for item in summary["scenarios"]:
         evidently = item["evidently"]
         print(
             f"{item['scenario']:10s} drift em {evidently['n_drifted']}/{evidently['n_columns']} colunas | "
             f"acuracia {item['quality']['accuracy']:.3f} | {settings.drift_reports_dir / item['html']}"
         )
+    if "attribution" in summary:
+        shapley = summary["attribution"]["metrics"]["accuracy"]["shapley"]
+        print("atribuicao da queda de acuracia (Shapley): " + ", ".join(f"{m}={v:+.3f}" for m, v in shapley.items()))
     return 0
 
 

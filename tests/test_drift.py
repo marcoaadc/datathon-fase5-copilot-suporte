@@ -9,6 +9,7 @@ import pandas as pd
 import pytest
 
 from supportcopilot.data.ingest import LANGUAGE, TARGET, TEXT, load_partition
+from supportcopilot.drift import attribution
 from supportcopilot.drift import report as drift_report
 from supportcopilot.drift.features import (
     MONITORED_FEATURES,
@@ -254,6 +255,37 @@ class TestSimulate:
         assert abs(len(noisy) - len(original)) < 15
 
 
+class TestAttribution:
+    def test_additive_game_recovers_individual_effects_and_is_efficient(self):
+        from itertools import combinations
+
+        weights = {"language": -0.10, "prior": -0.02, "noise": -0.05, "truncate": -0.01}
+        value = {
+            frozenset(combo): sum(weights[p] for p in combo)
+            for size in range(5)
+            for combo in combinations(attribution.MECHANISMS, size)
+        }
+        shapley = attribution.shapley_values(value, attribution.MECHANISMS)
+        assert shapley == pytest.approx(weights)
+        assert sum(shapley.values()) == pytest.approx(value[frozenset(attribution.MECHANISMS)] - value[frozenset()])
+
+    def test_interaction_is_split_equally(self):
+        # Dois mecanismos que so causam dano juntos: cada um recebe metade.
+        players = ("a", "b")
+        value = {frozenset(): 0.0, frozenset("a"): 0.0, frozenset("b"): 0.0, frozenset("ab"): -0.4}
+        assert attribution.shapley_values(value, players) == pytest.approx({"a": -0.2, "b": -0.2})
+
+    def test_scenario_subset_turns_mechanisms_off(self):
+        base = get_scenario("severo")
+        only_noise = attribution.scenario_subset(base, frozenset({"noise"}))
+        assert only_noise.noise_fraction == base.noise_fraction
+        assert (only_noise.language_fraction, only_noise.truncate_fraction, only_noise.prior_weights) == (0.0, 0.0, {})
+        assert attribution.scenario_subset(base, frozenset()).is_control
+        assert (
+            attribution.scenario_subset(base, frozenset(attribution.MECHANISMS)).name == "language+noise+prior+truncate"
+        )
+
+
 @pytest.mark.slow
 class TestEvidentlyReport:
     @pytest.fixture(scope="class")
@@ -262,7 +294,7 @@ class TestEvidentlyReport:
 
         reports = tmp_path_factory.mktemp("reports")
         settings = build_settings(workspace, reports_dir=reports, data_dir=workspace / "data")
-        return settings, drift_pipeline.run(settings, window_size=150)
+        return settings, drift_pipeline.run(settings, window_size=150, attribution_seeds=(42,))
 
     def test_html_reports_and_summary_are_written(self, summary):
         settings = summary[0]
@@ -292,6 +324,19 @@ class TestEvidentlyReport:
         assert by_name["severo"]["quality"]["accuracy"] < by_name["controle"]["quality"]["accuracy"] - 0.1
         assert by_name["severo"]["quality"]["mean_oov_rate"] > by_name["controle"]["quality"]["mean_oov_rate"]
         assert by_name["severo"]["psi_own"]["oov_rate"] > 0.25
+
+    def test_attribution_is_efficient_and_blames_the_language_shift(self, summary):
+        settings, result = summary
+        report = result["attribution"]
+        assert (settings.drift_reports_dir / "attribution.json").exists()
+        assert "## Atribuição causal" in (settings.drift_reports_dir / "summary.md").read_text(encoding="utf-8")
+        for metric, item in report["metrics"].items():
+            assert sum(item["shapley"].values()) == pytest.approx(item["total_change"], abs=1e-9), metric
+            assert len(item["by_subset"]) == 16
+        accuracy = report["metrics"]["accuracy"]
+        assert accuracy["total_change"] < -0.1
+        assert accuracy["shapley"]["language"] == min(accuracy["shapley"].values())
+        assert report["metrics"]["mean_oov_rate"]["shapley"]["language"] > 0
 
     def test_own_psi_and_quality_helpers(self, summary):
         settings, _ = summary

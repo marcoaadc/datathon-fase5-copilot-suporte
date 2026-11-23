@@ -180,7 +180,8 @@ class TestMlflowIntegration:
         client = MlflowClient(settings.mlflow_tracking_uri)
         experiment = client.get_experiment_by_name("teste-triagem" + drift_cli.DRIFT_EXPERIMENT_SUFFIX)
         runs = {run.info.run_name: run for run in client.search_runs([experiment.experiment_id])}
-        assert set(runs) == {"drift-controle", "drift-moderado", "drift-severo"}
+        assert set(runs) == {"drift-controle", "drift-moderado", "drift-severo", "drift-atribuicao"}
+        assert "shapley__accuracy__language" in runs["drift-atribuicao"].data.metrics
         severe = runs["drift-severo"]
         assert severe.data.metrics["share_drifted"] > runs["drift-controle"].data.metrics["share_drifted"]
         assert "psi__oov_rate" in severe.data.metrics
