@@ -1,6 +1,6 @@
 [project]
 name = "supportcopilot"
-version = "1.0.0"
+version = "1.1.0"
 description = "Copilot de suporte hibrido: triagem de chamados (scikit-learn + MLflow), RAG sobre manuais em PDF (LangChain + FAISS) com guardrails, deteccao de drift (Evidently) e protecao de dados pessoais (LGPD)"
 authors = [{ name = "Marco", email = "marcoaadc@gmail.com" }]
 readme = "README.md"

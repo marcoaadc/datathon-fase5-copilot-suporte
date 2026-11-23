@@ -2,6 +2,19 @@
 
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/); versões seguem [SemVer](https://semver.org/lang/pt-BR/).
 
+## [1.1.0] - 2026-11-23
+
+### Adicionado
+
+- **Atribuição causal da degradação.** Os quatro mecanismos de drift são ligados e desligados em todas as 16 combinações (3 seeds cada) e a queda do modelo é repartida por valores de Shapley (`drift/attribution.py`, `reports/drift/attribution.json`, run `drift-atribuicao` no MLflow). Resultado: o idioma responde por 85% da queda de acurácia; a mudança na mistura de filas dispara drift mas melhora a acurácia; os mecanismos são quase aditivos.
+- **LGPD.** Teste de balanceamento do legítimo interesse na estrutura do guia da ANPD; transferência internacional pelas cláusulas-padrão da Resolução CD/ANPD nº 19/2024; artigos 10, 11, 18, 37, 38, 39, 46 e 48 mapeados para controles concretos.
+- **Relatórios no GitHub Pages.** Página de índice em `reports/index.html` com os relatórios do Evidently, a avaliação da busca e o resumo do MLflow.
+- **README.** Guia rápido por critério de avaliação, com peso e link para cada seção.
+
+### Alterado
+
+- O resumo do MLflow passa a listar o run de atribuição com os valores de Shapley por métrica.
+
 ## [1.0.0] - 2026-11-20
 
 Primeira entrega: copilot de suporte de ponta a ponta para o Datathon da Fase 5.
