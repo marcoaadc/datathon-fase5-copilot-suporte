@@ -13,7 +13,7 @@ Motor de um **Copilot de Suporte** de ponta a ponta. O sistema recebe um chamado
 | **Triagem** | TF-IDF + regressão logística, 10 filas, acurácia 0,634 e F1 macro 0,642 no teste (baseline 0,301); decisão "é técnico?" com F1 0,863 |
 | **RAG** | LangChain + FAISS + BM25 sobre PDF; seção certa no top-4 em 98,3% de 60 perguntas |
 | **Guardrails** | 9 regras de entrada, 4 de saída e quarentena de trechos do PDF; 74,5% de ataques inéditos barrados em teste cego, 0 falso positivo em 70 perguntas legítimas |
-| **Drift** | Relatórios do Evidently: 0/10 colunas com drift no controle, 9/10 no cenário severo, com a acurácia caindo de 0,636 para 0,471 |
+| **Drift** | Relatórios do Evidently: 0/10 colunas com drift no controle, 9/10 no cenário severo, com a acurácia caindo de 0,636 para 0,471; atribuição por Shapley mostra que o idioma responde por 85% da queda |
 | **Engenharia** | 580 testes, 98% de cobertura, imagem Docker não-root, receita da imagem verificada em Linux |
 
 ### Guia rápido para a avaliação
@@ -104,7 +104,9 @@ O número honesto é o do conjunto cego: um filtro por padrões barra cerca de t
 | Moderado | 3/10 | 0,593 | 12,3% |
 | Severo | 9/10 | 0,471 | 36,0% |
 
-Relatórios do Evidently, abertos direto no navegador (GitHub Pages): [controle](https://marcoaadc.github.io/datathon-fase5-copilot-suporte/reports/drift/drift_controle.html), [moderado](https://marcoaadc.github.io/datathon-fase5-copilot-suporte/reports/drift/drift_moderado.html), [severo](https://marcoaadc.github.io/datathon-fase5-copilot-suporte/reports/drift/drift_severo.html). Os mesmos arquivos estão em [`reports/drift/`](reports/drift/).
+Atribuição causal da queda (Shapley sobre os 4 mecanismos): idioma -0.127, truncamento -0.030, ruído -0.020, mistura de filas +0.027 (soma -0.150).
+
+Relatórios do Evidently, abertos direto no navegador ([índice no GitHub Pages](https://marcoaadc.github.io/datathon-fase5-copilot-suporte/reports/)): [controle](https://marcoaadc.github.io/datathon-fase5-copilot-suporte/reports/drift/drift_controle.html), [moderado](https://marcoaadc.github.io/datathon-fase5-copilot-suporte/reports/drift/drift_moderado.html), [severo](https://marcoaadc.github.io/datathon-fase5-copilot-suporte/reports/drift/drift_severo.html). Os mesmos arquivos estão em [`reports/drift/`](reports/drift/).
 
 ## 3. Onde está cada requisito do enunciado
 
@@ -119,7 +121,7 @@ Relatórios do Evidently, abertos direto no navegador (GitHub Pages): [controle]
 | 2 | Banco vetorial em memória (FAISS) | [`rag/index.py`](src/supportcopilot/rag/index.py) |
 | 2 | LLM via API (OpenAI ou Gemini), resposta só com base no PDF | [`rag/llm.py`](src/supportcopilot/rag/llm.py), [`rag/prompts.py`](src/supportcopilot/rag/prompts.py) |
 | 2 | Guardrails (palavras proibidas, tentativa de ignorar o PDF) | [`guardrails/`](src/supportcopilot/guardrails/), [docs/guardrails.md](docs/guardrails.md) |
-| 3 | Script que simula a degradação (data drift) | [`drift/simulate.py`](src/supportcopilot/drift/simulate.py), [`pipelines/drift_report.py`](src/supportcopilot/pipelines/drift_report.py) |
+| 3 | Script que simula a degradação (data drift) | [`drift/simulate.py`](src/supportcopilot/drift/simulate.py), [`pipelines/drift_report.py`](src/supportcopilot/pipelines/drift_report.py), atribuição causal em [`drift/attribution.py`](src/supportcopilot/drift/attribution.py) |
 | 3 | Relatório HTML do Evidently | [`drift/report.py`](src/supportcopilot/drift/report.py), [`reports/drift/`](reports/drift/) |
 | 3 | Validação com Pydantic (texto não vazio, até 1000 caracteres) | [`api/schemas.py`](src/supportcopilot/api/schemas.py) |
 | 4 | Dockerfile e `requirements.txt` | [`Dockerfile`](Dockerfile), [`requirements.txt`](requirements.txt), [`docker-compose.yml`](docker-compose.yml) |
@@ -579,6 +581,19 @@ Como ler:
 - **`digit_ratio` nunca acusa**, e está certo: nenhum mecanismo mexe em dígitos. É um controle negativo dentro do próprio relatório.
 - **A causa é legível.** `oov_rate` com PSI 4,1 e `non_ascii_ratio` subindo dizem "idioma novo"; `upper_ratio` diz "outro estilo de digitação"; `n_chars` caindo diz "mensagem truncada". O [runbook](docs/runbook.md) transforma cada padrão em ação.
 
+
+**Qual mecanismo causou a queda?** Os quatro mecanismos são ligados e desligados em todas as 16 combinações (3 seeds cada) e a degradação é repartida por **valores de Shapley**: a soma das quatro parcelas é exatamente a diferença entre "tudo ligado" e o controle.
+
+| Mecanismo | Parcela da queda de acurácia | Parcela do aumento de palavras fora do vocabulário |
+|---|---|---|
+| Idioma (chamados em alemão) | **-0.127** | +0.277 |
+| Mensagens truncadas | -0.030 | +0.005 |
+| Ruído de digitação e maiúsculas | -0.020 | +0.075 |
+| Mistura de filas (incidente) | **+0.027** | -0.003 |
+| Total (tudo ligado − controle) | -0.150 | +0.354 |
+
+O idioma responde por 85% da queda; a ação é rotular chamados no novo idioma e retreinar. A mudança na mistura de filas **melhora** a acurácia (o incidente concentra chamados nas filas que o modelo mais acerta), embora dispare drift em `predicted_queue`: é o caso em que o monitor acusa mudança e o modelo não piorou. Os mecanismos são quase aditivos (efeitos isolados somam -0.149). Detalhes e a leitura completa em [docs/drift.md](docs/drift.md#41-atribuição-causal-qual-mecanismo-derrubou-o-modelo); dados em [`reports/drift/attribution.json`](reports/drift/attribution.json).
+
 ### 8.5 Monitor de drift na API
 
 O mesmo detector roda dentro da API: a cada chamado triado, as dez features entram em uma janela deslizante (500 chamados) e são comparadas por PSI com o perfil de referência gerado no treino. O perfil guarda só agregados (limites de faixa e proporções), então pode ser versionado e embarcado na imagem.
@@ -761,14 +776,27 @@ O CPF e o e-mail não aparecem em nenhum campo da resposta, nem no log, nem na c
 
 | Tema | Enquadramento sugerido |
 |---|---|
-| Papéis | A empresa de suporte é **controladora**; o provedor de LLM e a nuvem são **operadores** (art. 5º, VI e VII), com contrato de processamento de dados |
-| Base legal | **Execução de contrato** (art. 7º, V) para atender o chamado; **legítimo interesse** (art. 7º, IX) para a triagem automática e o monitoramento, com relatório de impacto |
-| Transferência internacional | Cláusulas-padrão ou processamento em região nacional (ver nota da seção 9.4); o mascaramento reduz o que é transferido, não dispensa o instrumento |
-| Uso pelo provedor | Contratar a modalidade em que os dados **não treinam** os modelos do provedor e com retenção mínima |
-| Decisão automatizada (art. 20) | A triagem só roteia e o copilot só sugere: nenhuma decisão produz efeito jurídico. `needs_human_review` e a fila humana garantem revisão por pessoa |
-| Direitos do titular | Como a API não armazena conteúdo, acesso e eliminação recaem sobre o sistema de chamados da empresa, não sobre o copilot |
-| Retenção | Logs operacionais (sem conteúdo): 90 dias. Métricas agregadas: 13 meses. Relatórios de drift: agregados, sem dado pessoal |
-| Incidentes | Vazamento de chave de LLM: revogar e trocar o segredo (runbook). Não há base de conteúdo a notificar |
+| Papéis | A empresa de suporte é **controladora**; o provedor de LLM e a nuvem são **operadores** (art. 5º, VI e VII), com contrato de processamento de dados que fixe finalidade, instruções, subcontratação, retenção e auditoria (art. 39) |
+| Base legal: atender o chamado | **Execução de contrato** (art. 7º, V): o cliente abriu o chamado para ter o problema resolvido; usar o texto para isso é a própria prestação do serviço |
+| Base legal: triagem automática e monitoramento | **Legítimo interesse** (art. 7º, IX, e art. 10), com o teste de balanceamento abaixo documentado em registro das operações (art. 37) e, pela escala e pelo uso de IA, relatório de impacto (art. 38) |
+| Transferência internacional | Enviar a pergunta a um provedor fora do país é transferência (art. 33). Caminhos: **cláusulas-padrão contratuais** aprovadas pela ANPD (Resolução CD/ANPD nº 19/2024) com o provedor, ou processamento em região nacional pelo serviço da própria nuvem (seção 9.4). O mascaramento reduz o que é transferido, não dispensa o instrumento |
+| Uso pelo provedor | Contratar a modalidade em que os dados **não treinam** os modelos do provedor, com retenção mínima e sem revisão humana pelo provedor |
+| Decisão automatizada (art. 20) | A triagem só roteia e o copilot só sugere: nenhuma decisão produz efeito jurídico ou afeta interesses do titular (ninguém deixa de ser atendido). Ainda assim, `needs_human_review` e a fila humana garantem revisão por pessoa, e a lógica (filas, limiares) é explicável a pedido |
+| Dados sensíveis (art. 11) | Não são coletados nem necessários. Se aparecerem no texto do chamado (uma condição de saúde citada de passagem), o tratamento é incidental; a mitigação é o mascaramento e, onde isso for provável, o modo sem terceiros |
+| Segurança (art. 46) | Mascaramento antes da transferência, nenhuma persistência de conteúdo, logs sem texto, segredos fora do código e da imagem, container não-root, modelo carregado só com hash conferido |
+| Direitos do titular (art. 18) | Como a API não armazena conteúdo, acesso, correção e eliminação recaem sobre o sistema de chamados da empresa. O copilot não cria um acervo novo de dados pessoais |
+| Retenção | Logs operacionais (sem conteúdo): 90 dias. Métricas agregadas: 13 meses. Relatórios de drift: agregados, sem dado pessoal. Nada de conteúdo a eliminar ao fim do atendimento |
+| Incidentes (art. 48) | Vazamento de chave de LLM: revogar e trocar o segredo (runbook); como não há base de conteúdo, não há titulares a notificar. Resposta inesperada do LLM com dado pessoal: bloqueada pela saída e registrada por código de regra |
+
+**Teste de balanceamento do legítimo interesse** (triagem automática e monitoramento de drift), na estrutura do guia da ANPD:
+
+| Etapa | Avaliação |
+|---|---|
+| Finalidade legítima | Encaminhar o chamado à equipe certa e manter a qualidade desse encaminhamento ao longo do tempo. Interesse da empresa e também do cliente, que é atendido mais rápido |
+| Necessidade | Só o texto do chamado é usado; nenhum cadastro, histórico ou identificador entra no modelo. O monitoramento guarda dez agregados por chamado, nunca o texto. É o mínimo para a finalidade |
+| Legítima expectativa | Quem escreve para o suporte espera que o texto seja lido para resolver o problema; ser lido por um classificador antes de uma pessoa está dentro dessa expectativa. O que **não** estaria é o texto ser usado para treinar modelos de terceiros, e isso é vedado por contrato |
+| Salvaguardas e transparência | Mascaramento antes de qualquer terceiro; aviso na política de privacidade de que o atendimento usa classificação automática e assistente com IA; revisão humana garantida; direito de oposição (art. 18, § 2º) atendido pelo encaminhamento direto à fila humana |
+| Resultado | Os direitos e liberdades do titular não são afetados de forma desproporcional: nenhuma decisão com efeito sobre ele, nenhum dado novo coletado, nenhum conteúdo retido |
 
 ### 10.6 Risco residual
 
@@ -824,7 +852,7 @@ O CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) define três jobs:
 │   ├── triage/              Candidatos, treino com MLflow, registro com hash, inferência
 │   ├── rag/                 PDF, chunking, embeddings, FAISS + BM25, prompt, LLM, serviço de chat
 │   ├── guardrails/          Regras de entrada e saída, normalização anti-evasão, mascaramento de PII
-│   ├── drift/               Features, PSI, monitor da API, simulador, relatório do Evidently
+│   ├── drift/               Features, PSI, monitor da API, simulador, relatório do Evidently, atribuição por Shapley
 │   ├── observability/       Logs estruturados, métricas Prometheus, fachada do MLflow
 │   └── pipelines/           CLIs: ingest, train, drift_report, check_llm
 ├── tests/                   Suíte de testes e conjuntos de avaliação (tests/data)

@@ -92,6 +92,8 @@ Medido com chamados reais fora da distribuição de treino ([docs/drift.md](drif
 | 15% em alemão, ruído leve | 0,593 | 0,612 | 0,640 |
 | 45% em alemão, ruído e truncamento | 0,471 | 0,426 | 0,605 |
 
+Atribuição por valores de Shapley sobre os quatro mecanismos do cenário severo: idioma -0.127, truncamento -0.030, ruído -0.020, mistura de filas +0.027 (total -0.150). O retreino com dados no novo idioma é a remediação que ataca a causa dominante.
+
 **Ponto de atenção:** a confiança cai bem menos que a acurácia. O modelo não "sabe que não sabe" quando o idioma muda. Por isso o monitoramento usa a taxa de palavras fora do vocabulário, e não apenas a confiança.
 
 ## Limitações

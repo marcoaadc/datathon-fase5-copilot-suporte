@@ -30,7 +30,7 @@ O monitor de drift só opina a partir de 200 chamados na janela; antes disso res
 | `oov_rate` e `non_ascii_ratio` sobem, `confidence` cai | Outro idioma ou novo produto com vocabulário próprio | Confirmar com a operação; rotular amostra e retreinar incluindo o novo perfil |
 | `upper_ratio` sobe, `mean_word_length` muda | Novo canal de entrada (app, chat) com outro estilo de escrita | Normalizar na entrada ou retreinar com amostra do canal |
 | `n_chars` e `n_words` caem | Integração truncando a mensagem | Corrigir a integração; não é problema do modelo |
-| Só `predicted_queue` muda | Incidente em massa (mistura de filas) | Esperado; acompanhar. O modelo não piorou, a demanda mudou |
+| Só `predicted_queue` muda | Incidente em massa (mistura de filas) | Esperado; acompanhar. O modelo não piorou, a demanda mudou (na simulação, esse mecanismo até sobe a acurácia: ver atribuição em docs/drift.md) |
 | Nada muda, mas a operação reclama de roteamento errado | Drift de conceito (regra de negócio mudou) | Não é detectável sem rótulo: auditar amostra rotulada |
 
 3. Gere o relatório completo com uma amostra recente: `make drift` (ou o job agendado em nuvem) e anexe o HTML ao incidente.

@@ -23,6 +23,7 @@ O modelo de triagem recebe texto livre. Testes de drift comparam distribuições
 ## Consequências
 
 - O relatório liga causa e efeito: no cenário severo, 9 de 10 colunas em drift e acurácia de 0,63 para 0,47.
+- A degradação é atribuível: ligando e desligando os mecanismos em todas as combinações e repartindo por valores de Shapley, o idioma responde por -0.127 dos -0.150 de acurácia; a mudança na mistura de filas dispara drift mas melhora a acurácia (+0.027). Mudança na entrada e dano ao modelo são medidas distintas, e o relatório traz as duas.
 - `digit_ratio` não acusa drift em nenhum cenário, e está certo: nenhum mecanismo mexe em dígitos. Serve de controle negativo dentro do próprio relatório.
 - O monitor da API vive na memória de cada réplica e precisa de 200 chamados para opinar (com menos, o ruído amostral do PSI encosta no limiar); é um alerta rápido, não substitui o relatório em lote.
 - Drift de conceito (o mesmo texto passar a pertencer a outra fila) não é detectável sem rótulo. A mitigação é amostrar chamados para rotulagem humana, descrita no runbook.

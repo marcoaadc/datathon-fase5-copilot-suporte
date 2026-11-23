@@ -81,6 +81,29 @@ Fonte: [`reports/drift/summary.md`](../reports/drift/summary.md) e [`summary.jso
 
 Cada relatório abre com o resumo dos testes. No cenário severo, os que ficam vermelhos são "Share of Drifted Columns: Less 0.300" e um "Value Drift" por coluna afetada. Abaixo, para cada coluna, o Evidently mostra as distribuições de referência e da janela lado a lado: em `oov_rate`, a referência é um pico em zero e a janela severa tem uma segunda massa perto de 1,0 (os chamados em alemão). A seção de classificação mostra acurácia, precisão, recall e F1 da janela contra os da referência.
 
+## 4.1 Atribuição causal: qual mecanismo derrubou o modelo
+
+Saber que "9 de 10 colunas mudaram e a acurácia caiu" não diz o que fazer. Como a simulação é controlada, dá para intervir: ligar e desligar cada mecanismo do cenário severo e medir. O efeito de um mecanismo depende dos outros (ruído sobre texto em alemão não custa o mesmo que ruído sobre inglês), então a degradação é repartida por **valores de Shapley**: para cada mecanismo, a média da sua contribuição marginal em todas as ordens de ativação. A soma dos quatro é exatamente a diferença entre "tudo ligado" e o controle.
+
+Medido em todas as 16 combinações, com 3 seeds cada ([`reports/drift/attribution.json`](../reports/drift/attribution.json)); "isolado" é o efeito do mecanismo sozinho sobre o controle:
+
+| Mecanismo | Shapley (acurácia) | Isolado (acurácia) | Shapley (F1 macro) | Shapley (fora do vocab.) | Shapley (colunas em drift) |
+|---|---|---|---|---|---|
+| Idioma (chamados em alemão) | -0.127 | -0.125 | -0.144 | +0.277 | +0.46 |
+| Mistura de filas (incidente) | +0.027 | +0.042 | -0.009 | -0.003 | -0.05 |
+| Ruído de digitação e maiúsculas | -0.020 | -0.026 | -0.024 | +0.075 | +0.13 |
+| Mensagens truncadas | -0.030 | -0.040 | -0.037 | +0.005 | +0.27 |
+| **Total (tudo ligado − controle)** | **-0.150** | **-0.150** | **-0.214** | **+0.354** | **+0.81** |
+
+Leitura:
+
+1. **O idioma responde por 85% da queda de acurácia** (-0.127 de -0.150) e é quem leva a taxa fora do vocabulário de 0,4% para 36%. A ação é uma só: rotular chamados no novo idioma e retreinar. Ruído e truncamento, juntos, custam -0.050.
+2. **A mudança na mistura de filas sobe a acurácia** (+0.027), apesar de disparar drift em `predicted_queue`. O incidente simulado concentra chamados em "Service Outages" e "Billing", que são justamente as filas que o modelo mais acerta (F1 de 0,73 e 0,86). É o caso em que o monitor acusa mudança e o modelo não piorou: a demanda mudou, não a qualidade. O [runbook](runbook.md) trata esse padrão como "acompanhar", não como "retreinar".
+3. **Os mecanismos são quase aditivos.** Os efeitos isolados somam -0.149 contra -0.150 do total, e cada Shapley fica perto do seu isolado. Não há interação relevante a explicar.
+4. **Drift nas colunas e queda do modelo não são a mesma coisa.** O truncamento sozinho acusa drift em 3 das 10 colunas (`n_chars`, `n_words`...) e custa só -0.040 de acurácia; o idioma acusa 6 e custa -0.125. O número de colunas em drift mede o quanto a entrada mudou, não o quanto o modelo sofreu. Por isso o relatório traz as duas medidas lado a lado.
+
+A acurácia "tudo ligado" aqui (0.485) difere da do cenário severo da tabela anterior (0,471) porque é a média de 3 seeds, e não uma única janela.
+
 ## 5. Dois detectores, de propósito
 
 | | Relatório em lote | Monitor da API |
