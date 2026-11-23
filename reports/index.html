@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Copilot de Suporte — Relatórios</title>
+<style>
+  body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; max-width: 760px; margin: 3rem auto; padding: 0 1rem; color: #1f2937; line-height: 1.5; }
+  h1 { font-size: 1.6rem; margin-bottom: .25rem; }
+  p.sub { color: #6b7280; margin-top: 0; }
+  h2 { font-size: 1.1rem; margin-top: 2rem; border-bottom: 1px solid #e5e7eb; padding-bottom: .25rem; }
+  ul { padding-left: 1.2rem; }
+  li { margin: .35rem 0; }
+  a { color: #1d4ed8; }
+  code { background: #f3f4f6; padding: .1rem .3rem; border-radius: 4px; font-size: .9em; }
+</style>
+</head>
+<body>
+<h1>Copilot de Suporte — relatórios</h1>
+<p class="sub">Datathon FIAP Fase 5 · artefatos gerados pelo pipeline e versionados no <a href="https://github.com/marcoaadc/datathon-fase5-copilot-suporte">repositório</a>.</p>
+
+<h2>Drift (Evidently AI)</h2>
+<p>Janela de produção simulada contra a referência de treino. O controle não acusa drift; o cenário severo acusa 9 de 10 colunas e a acurácia cai de 0,636 para 0,471.</p>
+<ul>
+  <li><a href="drift/drift_controle.html">Controle (sem drift)</a> — prova de que o detector não dá alarme falso</li>
+  <li><a href="drift/drift_moderado.html">Drift moderado</a> — 15% em alemão, incidente leve, 10% com ruído</li>
+  <li><a href="drift/drift_severo.html">Drift severo</a> — 45% em alemão, incidente em massa, ruído e truncamento</li>
+  <li><a href="https://github.com/marcoaadc/datathon-fase5-copilot-suporte/blob/main/reports/drift/summary.md">Resumo e atribuição causal por valores de Shapley</a> (<code>summary.md</code>)</li>
+</ul>
+
+<h2>RAG</h2>
+<ul>
+  <li><a href="https://github.com/marcoaadc/datathon-fase5-copilot-suporte/blob/main/reports/rag/retrieval_eval.md">Avaliação da busca</a> — hit@k e MRR por estratégia (densa, lexical, híbrida) e varredura do limiar de relevância</li>
+</ul>
+
+<h2>MLflow</h2>
+<ul>
+  <li><a href="https://github.com/marcoaadc/datathon-fase5-copilot-suporte/blob/main/reports/mlflow/summary.md">Resumo dos experimentos</a> — runs, parâmetros, métricas, artefatos e Model Registry</li>
+</ul>
+</body>
+</html>
