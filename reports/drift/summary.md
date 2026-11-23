@@ -24,3 +24,15 @@ Referencia (teste): acuracia 0.634, F1 macro 0.642, confianca media 0.668, fora 
 | `predicted_queue` | 0.008 | 0.037 | 0.143 **drift** |
 | `technical_probability` | 0.012 | 0.030 | 0.110 **drift** |
 | `upper_ratio` | 0.012 | 0.321 **drift** | 1.346 **drift** |
+
+## Atribuição causal da degradação (valores de Shapley)
+
+Cenário `severo` decomposto nas 16 combinações dos 4 mecanismos, 3 seeds por combinação, 1970 chamados por janela. Acurácia: controle 0.636, tudo ligado 0.485 (variação -0.150).
+
+| Mecanismo | Shapley (acurácia) | Isolado (acurácia) | Shapley (F1 macro) | Shapley (fora do vocab.) | Shapley (colunas em drift) |
+|---|---|---|---|---|---|
+| Idioma (chamados em alemao) | -0.127 | -0.125 | -0.144 | +0.277 | +0.46 |
+| Mistura de filas (incidente) | +0.027 | +0.042 | -0.009 | -0.003 | -0.05 |
+| Ruido de digitacao e maiusculas | -0.020 | -0.026 | -0.024 | +0.075 | +0.13 |
+| Mensagens truncadas | -0.030 | -0.040 | -0.037 | +0.005 | +0.27 |
+| **Total (tudo ligado − controle)** | **-0.150** | **-0.150** | **-0.214** | **+0.354** | **+0.81** |

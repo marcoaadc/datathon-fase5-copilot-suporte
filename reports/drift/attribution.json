@@ -1,0 +1,192 @@
+{
+  "base_scenario": "severo",
+  "seeds": [
+    42,
+    43,
+    44
+  ],
+  "rows_per_window": 1970,
+  "mechanisms": [
+    "language",
+    "prior",
+    "noise",
+    "truncate"
+  ],
+  "metrics": {
+    "accuracy": {
+      "control": 0.6355329949238578,
+      "all": 0.4852791878172589,
+      "total_change": -0.15025380710659897,
+      "shapley": {
+        "language": -0.12742526790750142,
+        "prior": 0.026974055273547688,
+        "noise": -0.019557247602932856,
+        "truncate": -0.030245346869712385
+      },
+      "isolated": {
+        "language": -0.12453468697123515,
+        "prior": 0.041962774957698845,
+        "noise": -0.02622673434856171,
+        "truncate": -0.03976311336717431
+      },
+      "by_subset": {
+        "nenhum": 0.6355329949238578,
+        "language": 0.5109983079526227,
+        "prior": 0.6774957698815567,
+        "noise": 0.6093062605752961,
+        "truncate": 0.5957698815566835,
+        "language+prior": 0.5225042301184434,
+        "language+noise": 0.4981387478849408,
+        "language+truncate": 0.4862944162436548,
+        "noise+prior": 0.6536379018612521,
+        "prior+truncate": 0.6416243654822336,
+        "noise+truncate": 0.5715736040609137,
+        "language+noise+prior": 0.5076142131979696,
+        "language+prior+truncate": 0.5010152284263959,
+        "language+noise+truncate": 0.47681895093062604,
+        "noise+prior+truncate": 0.6181049069373943,
+        "language+noise+prior+truncate": 0.4852791878172589
+      }
+    },
+    "f1_macro": {
+      "control": 0.651949006374899,
+      "all": 0.43803861265324096,
+      "total_change": -0.2139103937216581,
+      "shapley": {
+        "language": -0.1441298581196598,
+        "prior": -0.008592082185140404,
+        "noise": -0.023812459320827425,
+        "truncate": -0.037375994096030464
+      },
+      "isolated": {
+        "language": -0.15674549412655986,
+        "prior": -0.009408963633624534,
+        "noise": -0.0350685461115845,
+        "truncate": -0.054026305489922155
+      },
+      "by_subset": {
+        "nenhum": 0.651949006374899,
+        "language": 0.4952035122483392,
+        "prior": 0.6425400427412745,
+        "noise": 0.6168804602633146,
+        "truncate": 0.5979227008849769,
+        "language+prior": 0.48095689124694746,
+        "language+noise": 0.48117372896053473,
+        "language+truncate": 0.4654051114017023,
+        "noise+prior": 0.6145488509795841,
+        "prior+truncate": 0.6012332129877018,
+        "noise+truncate": 0.5720399371423446,
+        "language+noise+prior": 0.46318076127994073,
+        "language+prior+truncate": 0.4559900441080266,
+        "language+noise+truncate": 0.4504767142448105,
+        "noise+prior+truncate": 0.5751518997529089,
+        "language+noise+prior+truncate": 0.43803861265324096
+      }
+    },
+    "mean_confidence": {
+      "control": 0.6606966797199685,
+      "all": 0.607507669038735,
+      "total_change": -0.053189010681233495,
+      "shapley": {
+        "language": -0.05955001855112897,
+        "prior": 0.030462697459253153,
+        "noise": -0.013304359276363125,
+        "truncate": -0.01079733031299455
+      },
+      "isolated": {
+        "language": -0.05855094347338985,
+        "prior": 0.03609801784855682,
+        "noise": -0.015748485845631488,
+        "truncate": -0.012457820887210369
+      },
+      "by_subset": {
+        "nenhum": 0.6606966797199685,
+        "language": 0.6021457362465786,
+        "prior": 0.6967946975685253,
+        "noise": 0.644948193874337,
+        "truncate": 0.6482388588327581,
+        "language+prior": 0.6283485446616054,
+        "language+noise": 0.5919387948215575,
+        "language+truncate": 0.5921757855415718,
+        "noise+prior": 0.6795255807922959,
+        "prior+truncate": 0.6837055463959317,
+        "noise+truncate": 0.6331960951188211,
+        "language+noise+prior": 0.6160406602248663,
+        "language+prior+truncate": 0.6180626039947258,
+        "language+noise+truncate": 0.5820675380406445,
+        "noise+prior+truncate": 0.6678984513372951,
+        "language+noise+prior+truncate": 0.607507669038735
+      }
+    },
+    "mean_oov_rate": {
+      "control": 0.003722114776549668,
+      "all": 0.35767447816699316,
+      "total_change": 0.3539523633904435,
+      "shapley": {
+        "language": 0.27725121307884537,
+        "prior": -0.0033896831540910473,
+        "noise": 0.07470028967170084,
+        "truncate": 0.0053905437939883085
+      },
+      "isolated": {
+        "language": 0.2954605853212051,
+        "prior": -0.0005613620640790291,
+        "noise": 0.08741825595096907,
+        "truncate": 0.007876118057936492
+      },
+      "by_subset": {
+        "nenhum": 0.003722114776549668,
+        "language": 0.2991827000977548,
+        "prior": 0.003160752712470639,
+        "noise": 0.09114037072751874,
+        "truncate": 0.01159823283448616,
+        "language+prior": 0.2916199357471305,
+        "language+noise": 0.3601976905226401,
+        "language+truncate": 0.3022617998995513,
+        "noise+prior": 0.09090199135973746,
+        "prior+truncate": 0.010245006990847254,
+        "noise+truncate": 0.09847785700160633,
+        "language+noise+prior": 0.35426798636925455,
+        "language+prior+truncate": 0.29517732412513903,
+        "language+noise+truncate": 0.36306232219433227,
+        "noise+prior+truncate": 0.09781782691661045,
+        "language+noise+prior+truncate": 0.35767447816699316
+      }
+    },
+    "share_drifted": {
+      "control": 0.0,
+      "all": 0.8148148148148148,
+      "total_change": 0.8148148148148148,
+      "shapley": {
+        "language": 0.4629629629629629,
+        "prior": -0.04938271604938271,
+        "noise": 0.1296296296296296,
+        "truncate": 0.2716049382716049
+      },
+      "isolated": {
+        "language": 0.5925925925925927,
+        "prior": 0.0,
+        "noise": 0.2222222222222222,
+        "truncate": 0.3333333333333333
+      },
+      "by_subset": {
+        "nenhum": 0.0,
+        "language": 0.5925925925925927,
+        "prior": 0.0,
+        "noise": 0.2222222222222222,
+        "truncate": 0.3333333333333333,
+        "language+prior": 0.4444444444444444,
+        "language+noise": 0.6666666666666666,
+        "language+truncate": 0.8888888888888888,
+        "noise+prior": 0.2222222222222222,
+        "prior+truncate": 0.3333333333333333,
+        "noise+truncate": 0.4444444444444444,
+        "language+noise+prior": 0.5925925925925926,
+        "language+prior+truncate": 0.7407407407407408,
+        "language+noise+truncate": 0.8888888888888888,
+        "noise+prior+truncate": 0.4444444444444444,
+        "language+noise+prior+truncate": 0.8148148148148148
+      }
+    }
+  }
+}

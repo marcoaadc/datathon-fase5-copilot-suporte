@@ -120,10 +120,26 @@ def build() -> str:
             "| Run | " + " | ".join(DRIFT_METRICS) + " | Artefato |",
             "|---|" + "---|" * (len(DRIFT_METRICS) + 1),
         ]
+        attribution = None
         for run in runs:
+            if run.info.run_name == "drift-atribuicao":
+                attribution = run
+                continue
             metrics = " | ".join(_fmt(run.data.metrics.get(name)) for name in DRIFT_METRICS)
             artifacts = ", ".join(f"`{path}`" for path in _artifacts(client, run.info.run_id))
             lines.append(f"| `{run.info.run_name}` | {metrics} | {artifacts} |")
+        if attribution is not None:
+            lines += [
+                "",
+                f"### Run `drift-atribuicao` (`{attribution.info.run_id}`)",
+                "",
+                "Valores de Shapley de cada mecanismo do cenario severo, por metrica (seeds "
+                f"{attribution.data.params.get('seeds')}, {attribution.data.params.get('rows')} chamados por janela).",
+                "",
+                "| Metrica | Valor |",
+                "|---|---|",
+            ]
+            lines += [f"| `{name}` | {_fmt(value)} |" for name, value in sorted(attribution.data.metrics.items())]
     return "\n".join(lines) + "\n"
 
 

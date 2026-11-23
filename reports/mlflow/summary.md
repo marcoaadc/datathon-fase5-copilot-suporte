@@ -84,3 +84,35 @@ Um run por cenario de drift, com o relatorio HTML do Evidently como artefato.
 | `drift-controle` | 0 | 0 | 0 | 0.6355 | 0.6519 | 0.6607 | 0.0037 | `evidently/drift_controle.html` |
 | `drift-moderado` | 0.3 | 3 | 4 | 0.5934 | 0.6124 | 0.6399 | 0.1229 | `evidently/drift_moderado.html` |
 | `drift-severo` | 0.9 | 9 | 14 | 0.4711 | 0.4257 | 0.605 | 0.3599 | `evidently/drift_severo.html` |
+
+### Run `drift-atribuicao` (`5aefb07f568d433ba80ff8423ace890e`)
+
+Valores de Shapley de cada mecanismo do cenario severo, por metrica (seeds [42, 43, 44], 1970 chamados por janela).
+
+| Metrica | Valor |
+|---|---|
+| `shapley__accuracy__language` | -0.1274 |
+| `shapley__accuracy__noise` | -0.0196 |
+| `shapley__accuracy__prior` | 0.027 |
+| `shapley__accuracy__truncate` | -0.0302 |
+| `shapley__f1_macro__language` | -0.1441 |
+| `shapley__f1_macro__noise` | -0.0238 |
+| `shapley__f1_macro__prior` | -0.0086 |
+| `shapley__f1_macro__truncate` | -0.0374 |
+| `shapley__mean_confidence__language` | -0.0596 |
+| `shapley__mean_confidence__noise` | -0.0133 |
+| `shapley__mean_confidence__prior` | 0.0305 |
+| `shapley__mean_confidence__truncate` | -0.0108 |
+| `shapley__mean_oov_rate__language` | 0.2773 |
+| `shapley__mean_oov_rate__noise` | 0.0747 |
+| `shapley__mean_oov_rate__prior` | -0.0034 |
+| `shapley__mean_oov_rate__truncate` | 0.0054 |
+| `shapley__share_drifted__language` | 0.463 |
+| `shapley__share_drifted__noise` | 0.1296 |
+| `shapley__share_drifted__prior` | -0.0494 |
+| `shapley__share_drifted__truncate` | 0.2716 |
+| `total_change__accuracy` | -0.1503 |
+| `total_change__f1_macro` | -0.2139 |
+| `total_change__mean_confidence` | -0.0532 |
+| `total_change__mean_oov_rate` | 0.354 |
+| `total_change__share_drifted` | 0.8148 |
